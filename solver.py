@@ -73,12 +73,12 @@ class solver:
         changes = 0
         for i in self.options.keys():
             self.generateOptions()
-            # Continue if there are only 2 options for this cell
-            if(len(self.options.get(i)) == 2):
-                for j in self.options.keys():
-                    # Continue if the cells are not the same and they both have only 2 options
-                    if(i != j and len(self.options.get(j)) == 2):
-                        try:
+            try:
+                # Continue if there are only 2 options for this cell
+                if(i in self.options.keys() and len(self.options.get(i)) == 2):
+                    for j in self.options.keys():
+                        # Continue if the cells are not the same and they both have only 2 options
+                        if(i != j and len(self.options.get(j)) == 2):
                             # Continue if cells are in the same row and have the same options
                             if(i[0] == j[0] and self.options.get(i) == self.options.get(j)):
                                 #print(f"Row-wise Naked Pair Found, {i}, {j}")
@@ -133,8 +133,8 @@ class solver:
                                                 else:
                                                     self.blacklistedOptions.update({(k[0],k[1]):[l]})
                                                     changes += 1
-                        except Exception as e:
-                            print(e)
+            except Exception as e:
+                print(e)
         return changes
 
     # Run solver
@@ -167,15 +167,15 @@ class solver:
 game = sudoku(3)
 
 # Board presets can be found in games.txt
-game.loadBoard([[0,8,0,1,0,6,0,0,0],
-                [0,0,6,0,2,0,0,0,0],
-                [0,2,0,0,0,3,0,0,7],
-                [2,4,0,7,0,0,0,0,1],
-                [8,0,0,0,0,0,0,0,3],
-                [5,0,0,0,0,2,0,6,9],
-                [1,0,0,2,0,0,0,8,0],
-                [0,0,2,0,3,0,1,0,0],
-                [0,0,8,5,0,1,0,7,0]])
+game.loadBoard([[7,0,0,0,0,5,0,0,9],
+[0,0,5,2,0,0,0,1,0],
+[0,0,0,1,0,0,0,0,5],
+[0,7,0,0,0,0,8,0,0],
+[9,0,0,6,0,1,0,0,4],
+[0,0,4,0,0,0,0,2,0],
+[2,0,0,0,0,8,0,0,0],
+[0,3,0,0,0,7,9,0,0],
+[8,0,0,3,0,0,0,0,6]])
 
 print(game.getSudokuSolutionsLoadString())
 
