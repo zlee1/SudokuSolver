@@ -15,10 +15,10 @@ class solver:
             for col in range(self.game.nn):
                 for val in range(1,self.game.nn+1):
                     if(self.game.checkLegalMove(row,col,val)):
-                        if(not ((row,col) in self.blacklistedOptions.keys() and val not in self.blacklistedOptions.get((row,col)))):
+                        if(((row,col) in self.blacklistedOptions.keys() and val not in self.blacklistedOptions.get((row,col))) or (row,col) not in self.blacklistedOptions.keys()):
                             # Add option to dictionary if it is not blacklisted
                             if((row,col) in self.options.keys()):
-                                    self.options[(row,col)].append(val)
+                                self.options[(row,col)].append(val)
                             else:
                                 self.options.update({(row,col):[val]})
 
@@ -38,27 +38,27 @@ class solver:
     def hiddenSingle(self):
         changes = 0
         self.generateOptions()
-        for j in self.options.keys():
+        for i in self.options.keys():
             try:
-                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(j[0], j[1])
+                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0], i[1])
                 self.generateOptions()
-                for val in self.options.get(j):
+                for val in self.options.get(i):
                     ronly = True # If value is the only one in the row
                     conly = True # If value is the only one in the column
                     sonly = True # If value is the only one in the subboard
-                    for k in self.options.keys():
-                        if(k != j):
-                            if(k[0] == j[0]): # True if values are in the same row
-                                if(val in self.options.get(k)):
+                    for j in self.options.keys():
+                        if(j != i):
+                            if(j[0] == j[0]): # True if values are in the same row
+                                if(val in self.options.get(j)):
                                     ronly = False
-                            if(k[1] == j[1]): # True if values are in the same column
-                                if(val in self.options.get(k)):
+                            if(j[1] == i[1]): # True if values are in the same column
+                                if(val in self.options.get(j)):
                                     conly = False
-                            if(k[0] in range(rmin,rmax) and k[1] in range(cmin,cmax)): # True if values are in the same subboard
-                                if(val in self.options.get(k)):
+                            if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)): # True if values are in the same subboard
+                                if(val in self.options.get(j)):
                                     sonly = False
                     if(ronly or conly or sonly): # Make move only if the value is the only one in the row, column, or subboard
-                        self.game.makeMove(j[0], j[1], val)
+                        self.game.makeMove(i[0], i[1], val)
                         changes += 1
                         break
             except Exception as e:
@@ -70,11 +70,76 @@ class solver:
     # have the same set of only 2 possible options, meaning those options can be
     # eliminated from the row, column, or subboard
     def nakedPair(self):
-        print()
+        changes = 0
+        for i in self.options.keys():
+            self.generateOptions()
+            # Continue if there are only 2 options for this cell
+            if(len(self.options.get(i)) == 2):
+                for j in self.options.keys():
+                    # Continue if the cells are not the same and they both have only 2 options
+                    if(i != j and len(self.options.get(j)) == 2):
+                        try:
+                            # Continue if cells are in the same row and have the same options
+                            if(i[0] == j[0] and self.options.get(i) == self.options.get(j)):
+                                #print(f"Row-wise Naked Pair Found, {i}, {j}")
+                                for k in self.options.keys():
+                                    # Continue if cells are in the same row and are not the same
+                                    if(k[0] == i[0] and k != i and k != j):
+                                        for l in self.options.get(i):
+                                            # If value is in cell that is not in pair, blacklist it
+                                            if(l in self.options.get(k)):
+                                                #print(f"Blacklisted, {k} {l}")
+                                                # Add option to blacklist
+                                                if((k[0],k[1]) in self.blacklistedOptions.keys()):
+                                                    self.blacklistedOptions[(k[0],k[1])].append(l)
+                                                    changes += 1
+                                                else:
+                                                    self.blacklistedOptions.update({(k[0],k[1]):[l]})
+                                                    changes += 1
+
+                            # Continue if cells are in the same column and have the same options
+                            if(i[1] == j[1] and self.options.get(i) == self.options.get(j)):
+                                #print(f"Column-wise Naked Pair Found, {i}, {j}")
+                                for k in self.options.keys():
+                                    # Continue if cells are in the same column and are not the same
+                                    if(k[1] == i[1] and k != i and k != j):
+                                        for l in self.options.get(i):
+                                            # If value is in cell that is not in pair, blacklist it
+                                            if(l in self.options.get(k)):
+                                                #print(f"Blacklisted, {k} {l}")
+                                                # Add option to blacklist
+                                                if((k[0],k[1]) in self.blacklistedOptions.keys()):
+                                                    self.blacklistedOptions[(k[0],k[1])].append(l)
+                                                    changes += 1
+                                                else:
+                                                    self.blacklistedOptions.update({(k[0],k[1]):[l]})
+                                                    changes += 1
+
+                            rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
+                            # Continue if cells are in the same subboard and have the same options
+                            if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax) and self.options.get(i) == self.options.get(j)):
+                                #print(f"Subboard-wise Naked Pair Found, {i}, {j}")
+                                for k in self.options.keys():
+                                    # Continue if cells are in the same subboard and are not the same
+                                    if(k[0] in range(rmin,rmax) and k[1] in range(cmin,cmax) and k != i and k != j):
+                                        for l in self.options.get(i):
+                                            # If value is in cell that is not in pair, blacklist it
+                                            if(l in self.options.get(k)):
+                                                #print(f"Blacklisted, {k} {l}")
+                                                # Add option to blacklist
+                                                if((k[0],k[1]) in self.blacklistedOptions.keys()):
+                                                    self.blacklistedOptions[(k[0],k[1])].append(l)
+                                                    changes += 1
+                                                else:
+                                                    self.blacklistedOptions.update({(k[0],k[1]):[l]})
+                                                    changes += 1
+                        except Exception as e:
+                            print(e)
+        return changes
 
     # Run solver
     def solve(self):
-        loss = 0
+        total_changes = 0
         changes = 1
         while(not self.game.checkLegalBoard() and changes != 0): # Continue until board is complete and correct or no changes have been made
             #print()
@@ -86,9 +151,14 @@ class solver:
             # If no naked singles exist, make hidden single moves
             changes += self.hiddenSingle()
 
+            changes += self.nakedPair()
+
+            total_changes += changes
+
         # Output board in final state and whether it is solved or not
         print()
         self.game.printBoard()
+        print(f"Total Changes: {total_changes}")
         if(self.game.checkLegalBoard()):
             print("Solved")
         else:
@@ -97,17 +167,17 @@ class solver:
 game = sudoku(3)
 
 # Board presets can be found in games.txt
-game.loadBoard([[7,0,0,0,0,5,0,0,9],
-                [0,0,5,2,0,0,0,1,0],
-                [0,0,0,1,0,0,0,0,5],
-                [0,7,0,0,0,0,8,0,0],
-                [9,0,0,6,0,1,0,0,4],
-                [0,0,4,0,0,0,0,2,0],
-                [2,0,0,0,0,8,0,0,0],
-                [0,3,0,0,0,7,9,0,0],
-                [8,0,0,3,0,0,0,0,6]])
+game.loadBoard([[0,8,0,1,0,6,0,0,0],
+                [0,0,6,0,2,0,0,0,0],
+                [0,2,0,0,0,3,0,0,7],
+                [2,4,0,7,0,0,0,0,1],
+                [8,0,0,0,0,0,0,0,3],
+                [5,0,0,0,0,2,0,6,9],
+                [1,0,0,2,0,0,0,8,0],
+                [0,0,2,0,3,0,1,0,0],
+                [0,0,8,5,0,1,0,7,0]])
 
-#print(game.getSudokuSolutionsLoadString())
+print(game.getSudokuSolutionsLoadString())
 
 solver = solver(game)
 

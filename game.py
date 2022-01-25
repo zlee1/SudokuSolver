@@ -81,7 +81,7 @@ class sudoku:
             self.board[row][col] = val
             #print(row,col,val)
         else:
-            print("Cannot make move")
+            print(f"Cannot make move {row}, {col}, {val}")
 
     # Find the indices of the current subboard based on row and column
     def getSubboardIndices(self, row, col):
