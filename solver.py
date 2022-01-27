@@ -1,4 +1,5 @@
 from game import sudoku
+import numpy as np
 
 class solver:
 
@@ -71,6 +72,7 @@ class solver:
     # eliminated from the row, column, or subboard
     def nakedPair(self):
         changes = 0
+        checked_pairs = [] # Ignore checked pairs to speed up process || To be implemented
         for i in self.options.keys():
             self.generateOptions()
             try:
@@ -90,12 +92,8 @@ class solver:
                                             if(l in self.options.get(k)):
                                                 #print(f"Blacklisted, {k} {l}")
                                                 # Add option to blacklist
-                                                if((k[0],k[1]) in self.blacklistedOptions.keys()):
-                                                    self.blacklistedOptions[(k[0],k[1])].append(l)
-                                                    changes += 1
-                                                else:
-                                                    self.blacklistedOptions.update({(k[0],k[1]):[l]})
-                                                    changes += 1
+                                                self.addToBlacklist(k[0],k[1],l)
+                                                changes += 1
 
                             # Continue if cells are in the same column and have the same options
                             if(i[1] == j[1] and self.options.get(i) == self.options.get(j)):
@@ -108,12 +106,8 @@ class solver:
                                             if(l in self.options.get(k)):
                                                 #print(f"Blacklisted, {k} {l}")
                                                 # Add option to blacklist
-                                                if((k[0],k[1]) in self.blacklistedOptions.keys()):
-                                                    self.blacklistedOptions[(k[0],k[1])].append(l)
-                                                    changes += 1
-                                                else:
-                                                    self.blacklistedOptions.update({(k[0],k[1]):[l]})
-                                                    changes += 1
+                                                self.addToBlacklist(k[0],k[1],l)
+                                                changes += 1
 
                             rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
                             # Continue if cells are in the same subboard and have the same options
@@ -127,15 +121,95 @@ class solver:
                                             if(l in self.options.get(k)):
                                                 #print(f"Blacklisted, {k} {l}")
                                                 # Add option to blacklist
-                                                if((k[0],k[1]) in self.blacklistedOptions.keys()):
-                                                    self.blacklistedOptions[(k[0],k[1])].append(l)
-                                                    changes += 1
-                                                else:
-                                                    self.blacklistedOptions.update({(k[0],k[1]):[l]})
-                                                    changes += 1
+                                                self.addToBlacklist(k[0],k[1],l)
+                                                changes += 1
             except Exception as e:
                 print(e)
         return changes
+
+    # Handle hidden pair logic
+    # Hidden pairs are when there are only 2 possible places for a pair of numbers
+    # which means that all other options for those cells can be eliminated
+    def hiddenPair(self):
+        changes = 0
+        checked_sections = [] # Ignore checked sections to speed up process || To be implemented
+        for i in self.options.keys():
+            try:
+                self.generateOptions()
+                # Row handling
+                pairs = dict({})
+                for j in self.options.keys():
+                    if(i[0] == j[0]):
+                        # Update dictionary for each value that is an option for this cell
+                        for k in range(1,self.game.nn+1):
+                            if(k in self.options.get(j)):
+                                if(k in pairs.keys()):
+                                    pairs[k].append(j)
+                                else:
+                                    pairs.update({k:[j]})
+                changes += self.blacklistHiddenPairs(pairs)
+
+                # Column handling
+                pairs = dict({})
+                for j in self.options.keys():
+                    if(i[1] == j[1]):
+                        # Update dictionary for each value that is an option for this cell
+                        for k in range(1,self.game.nn+1):
+                            if(k in self.options.get(j)):
+                                if(k in pairs.keys()):
+                                    pairs[k].append(j)
+                                else:
+                                    pairs.update({k:[j]})
+                changes += self.blacklistHiddenPairs(pairs)
+
+                # Subboard handling
+                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
+                pairs = dict({})
+                for j in self.options.keys():
+                    if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
+                        # Update dictionary for each value that is an option for this cell
+                        for k in range(1,self.game.nn+1):
+                            if(k in self.options.get(j)):
+                                if(k in pairs.keys()):
+                                    pairs[k].append(j)
+                                else:
+                                    pairs.update({k:[j]})
+                changes += self.blacklistHiddenPairs(pairs)
+
+            except Exception as e:
+                print(e)
+        return changes
+
+    # Find hidden pairs and blacklist impossible options
+    def blacklistHiddenPairs(self, pairs):
+        changes = 0
+        for i in pairs.items():
+            num = i[0]
+            cells = i[1]
+            # Only dealing with pairs
+            if(len(cells) == 2):
+                pair_vals = [num]
+                for j in range(len(pairs.items())):
+                    # If the two pairs are not from the same number but have the same cells, they form a pair
+                    if(list(pairs.items())[j][0] != num and list(pairs.items())[j][1] == cells):
+                        pair_vals.append(list(pairs.items())[j][0])
+                # If there is a pair, remove impossible options from cells in pair
+                if(len(pair_vals) > 1):
+                    for cell in cells:
+                        for option in self.options.get(cell):
+                            if(option not in pair_vals):
+                                self.addToBlacklist(cell[0],cell[1],option)
+                                changes += 1
+                                print("Blacklisted",cell,option)
+        return changes
+
+    # Add value to blacklist for a given cell
+    def addToBlacklist(self,row,col,val):
+        if((row,col) in self.blacklistedOptions.keys()):
+            if(val not in self.blacklistedOptions.get((row,col))):
+                self.blacklistedOptions[(row,col)].append(val)
+        else:
+            self.blacklistedOptions.update({(row,col):[val]})
 
     # Run solver
     def solve(self):
@@ -151,7 +225,12 @@ class solver:
             # If no naked singles exist, make hidden single moves
             changes += self.hiddenSingle()
 
-            changes += self.nakedPair()
+            # SLower processes should only be done if no other things can happen
+            if(changes == 0):
+                changes += self.nakedPair()
+
+            if(changes == 0):
+                changes += self.hiddenPair()
 
             total_changes += changes
 
@@ -167,15 +246,15 @@ class solver:
 game = sudoku(3)
 
 # Board presets can be found in games.txt
-game.loadBoard([[7,0,0,0,0,5,0,0,9],
-[0,0,5,2,0,0,0,1,0],
-[0,0,0,1,0,0,0,0,5],
-[0,7,0,0,0,0,8,0,0],
-[9,0,0,6,0,1,0,0,4],
-[0,0,4,0,0,0,0,2,0],
-[2,0,0,0,0,8,0,0,0],
-[0,3,0,0,0,7,9,0,0],
-[8,0,0,3,0,0,0,0,6]])
+game.loadBoard([[0,8,0,1,0,6,0,0,0],
+[0,0,6,0,2,0,0,0,0],
+[0,2,0,0,0,3,0,0,7],
+[2,4,0,7,0,0,0,0,1],
+[8,0,0,0,0,0,0,0,3],
+[5,0,0,0,0,2,0,6,9],
+[1,0,0,2,0,0,0,8,0],
+[0,0,2,0,3,0,1,0,0],
+[0,0,8,5,0,1,0,7,0]])
 
 print(game.getSudokuSolutionsLoadString())
 
