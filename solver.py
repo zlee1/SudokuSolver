@@ -1,5 +1,6 @@
 from game import sudoku
 import numpy as np
+import datetime
 
 class solver:
 
@@ -200,7 +201,59 @@ class solver:
                             if(option not in pair_vals):
                                 self.addToBlacklist(cell[0],cell[1],option)
                                 changes += 1
-                                print("Blacklisted",cell,option)
+        return changes
+
+    # Find pointing pairs and blacklist impossible options
+    # Pointing pairs are when the only options for a value in a subboard are also
+    # in the same row or column which means that the value must be within that
+    # subboard and can be eliminated from other cells in the row or column
+    def pointingPair(self):
+        changes = 0
+        for i in self.options.keys():
+            try:
+                self.generateOptions()
+                # Subboard handling
+                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
+                pairs = dict({})
+                for j in self.options.keys():
+                    if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
+                        # Update dictionary for each value that is an option for this cell
+                        for k in range(1,self.game.nn+1):
+                            if(k in self.options.get(j)):
+                                if(k in pairs.keys()):
+                                    pairs[k].append(j)
+                                else:
+                                    pairs.update({k:[j]})
+
+                for j in pairs.items():
+                    # Continue if the value has possible cells > 1 and <= the subboard size
+                    if(len(j[1]) <= self.game.n and len(j[1]) > 1):
+                        row = j[1][0][0]
+                        col = j[1][0][1]
+                        row_wise = True
+                        col_wise = True
+                        # Check if all possible cells for this value are in the same row or column
+                        for k in j[1]:
+                            if(k[0] != row):
+                                row_wise = False
+                            if(k[1] != col):
+                                col_wise = False
+
+                        # If there is a pointing pair present, blacklist impossible values
+                        for k in self.options.keys():
+                            # Check to ensure that there is a pointing pair,
+                            # that the cell is in the same row/column as the pair,
+                            # and that the cell is not in the same subboard as the pair
+                            if(row_wise and k[0] == row and k[1] not in range(cmin,cmax)):
+                                if(j[0] in self.options.get(k)):
+                                    self.addToBlacklist(k[0],k[1],j[0])
+                                    changes += 1
+                            elif(col_wise and k[1] == col and k[0] not in range(rmin,rmax)):
+                                if(j[0] in self.options.get(k)):
+                                    self.addToBlacklist(k[0],k[1],j[0])
+                                    changes += 1
+            except Exception as e:
+                print(e)
         return changes
 
     # Add value to blacklist for a given cell
@@ -213,21 +266,22 @@ class solver:
 
     # Run solver
     def solve(self):
+        start_time = datetime.datetime.now()
         total_changes = 0
         changes = 1
         while(not self.game.checkLegalBoard() and changes != 0): # Continue until board is complete and correct or no changes have been made
-            #print()
-            #self.game.printBoard()
-
-            # Make naked single moves
+        
             changes = self.nakedSingle()
-
-            # If no naked singles exist, make hidden single moves
-            changes += self.hiddenSingle()
 
             # SLower processes should only be done if no other things can happen
             if(changes == 0):
+                changes += self.hiddenSingle()
+
+            if(changes == 0):
                 changes += self.nakedPair()
+
+            if(changes == 0):
+                changes += self.pointingPair()
 
             if(changes == 0):
                 changes += self.hiddenPair()
@@ -240,21 +294,22 @@ class solver:
         print(f"Total Changes: {total_changes}")
         if(self.game.checkLegalBoard()):
             print("Solved")
+            print("Time to solve:",datetime.datetime.now()-start_time)
         else:
             print("Unsolved")
 
 game = sudoku(3)
 
 # Board presets can be found in games.txt
-game.loadBoard([[0,8,0,1,0,6,0,0,0],
-[0,0,6,0,2,0,0,0,0],
-[0,2,0,0,0,3,0,0,7],
-[2,4,0,7,0,0,0,0,1],
-[8,0,0,0,0,0,0,0,3],
-[5,0,0,0,0,2,0,6,9],
-[1,0,0,2,0,0,0,8,0],
-[0,0,2,0,3,0,1,0,0],
-[0,0,8,5,0,1,0,7,0]])
+game.loadBoard([[0,5,0,4,0,0,0,0,0],
+[0,0,8,0,7,1,0,0,0],
+[0,9,0,0,2,0,0,3,7],
+[9,0,5,7,0,0,0,0,8],
+[0,0,7,9,5,8,0,0,0],
+[0,0,1,0,0,4,0,0,0],
+[0,0,0,3,0,0,0,5,0],
+[0,1,0,0,9,0,0,4,0],
+[0,0,0,0,0,0,8,0,2]])
 
 print(game.getSudokuSolutionsLoadString())
 
