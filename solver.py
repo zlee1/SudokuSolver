@@ -256,13 +256,109 @@ class solver:
                 print(e)
         return changes
 
+    # Handle naked triples
+    def nakedTriple(self):
+        changes = 0
+        for i in self.options.keys():
+            try:
+                self.generateOptions()
+                row = []
+                col = []
+                subboard = []
+                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
+                for j in self.options.keys():
+                    if(j[0] == i[0]):
+                        row.append(j)
+                    if(j[1] == i[1]):
+                        col.append(j)
+                    if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
+                        subboard.append(j)
+                for original_house in [row,col,subboard]:
+                    house = original_house.copy()
+                    # Remove cells that have more than 3 options
+                    if(len(house) >= 3):
+                        remove_cells = []
+                        for cell in house:
+                            if(len(self.options.get(cell)) > 3):
+                                remove_cells.append(cell)
+                        if(len(remove_cells) > 0):
+                            for cell in remove_cells:
+                                if(cell in house):
+                                    house.remove(cell)
+
+                    # Remove cells that contain values that only appear once
+                    if(len(house) >= 3):
+                        remove_cells = []
+                        for cell in house:
+                            for val in self.options.get(cell):
+                                val_count = 0
+                                for cell2 in house:
+                                    if(val in self.options.get(cell2)):
+                                        val_count += 1
+                                if(val_count < 2):
+                                    remove_cells.append(cell)
+                                    break
+                        if(len(remove_cells) > 0):
+                            for cell in remove_cells:
+                                if(cell in house):
+                                    house.remove(cell)
+
+                    # Remove cells that contain values that do not appear with at least 2 of the remaining values
+                    if(len(house) >= 3):
+                        remaining_values = []
+                        remove_cells = []
+                        for cell in house:
+                            for val in self.options.get(cell):
+                                if(val not in remaining_values):
+                                    remaining_values.append(val)
+                        if(len(remaining_values) >= 3):
+                            for cell in house:
+                                for val in self.options.get(cell):
+                                    appears_with = []
+                                    for cell2 in house:
+                                        if(val in self.options.get(cell2)):
+                                            for val2 in self.options.get(cell2):
+                                                if(val2 != val and val2 not in appears_with and val in remaining_values):
+                                                    appears_with.append(val2)
+                                    if(len(appears_with) < 2):
+                                        remove_cells.append(cell)
+                        if(len(remove_cells) > 0):
+                            for cell in remove_cells:
+                                if(cell in house):
+                                    house.remove(cell)
+
+                    # Check if there is naked triple
+                    if(len(house) >= 3):
+                        remaining_values = []
+                        for cell in house:
+                            for val in self.options.get(cell):
+                                if(val not in remaining_values):
+                                    remaining_values.append(val)
+                        if(len(remaining_values) == 3):
+                            #print("Naked Triple Found!",house)
+                            for blacklist_cell in original_house:
+                                if(blacklist_cell not in house):
+                                    for blacklist_val in self.options.get(blacklist_cell):
+                                        if(blacklist_val in remaining_values):
+                                            self.addToBlacklist(blacklist_cell[0],blacklist_cell[1],blacklist_val)
+                                            #print("Blacklisted",blacklist_cell[0],blacklist_cell[1],blacklist_val)
+                                            changes += 1
+
+
+
+            except Exception as e:
+                print(e)
+        return changes
+
     # Add value to blacklist for a given cell
     def addToBlacklist(self,row,col,val):
         if((row,col) in self.blacklistedOptions.keys()):
             if(val not in self.blacklistedOptions.get((row,col))):
                 self.blacklistedOptions[(row,col)].append(val)
+                #print("Blacklisted",row+1,col+1,val)
         else:
             self.blacklistedOptions.update({(row,col):[val]})
+            #print("Blacklisted",row+1,col+1,val)
 
     # Run solver
     def solve(self):
@@ -270,7 +366,7 @@ class solver:
         total_changes = 0
         changes = 1
         while(not self.game.checkLegalBoard() and changes != 0): # Continue until board is complete and correct or no changes have been made
-        
+
             changes = self.nakedSingle()
 
             # SLower processes should only be done if no other things can happen
@@ -286,6 +382,9 @@ class solver:
             if(changes == 0):
                 changes += self.hiddenPair()
 
+            if(changes == 0):
+                changes += self.nakedTriple()
+
             total_changes += changes
 
         # Output board in final state and whether it is solved or not
@@ -294,22 +393,22 @@ class solver:
         print(f"Total Changes: {total_changes}")
         if(self.game.checkLegalBoard()):
             print("Solved")
-            print("Time to solve:",datetime.datetime.now()-start_time)
+            print("Time to solve:",datetime.datetime.now()-start_time) # Show time to complete puzzle
         else:
             print("Unsolved")
 
 game = sudoku(3)
 
 # Board presets can be found in games.txt
-game.loadBoard([[0,5,0,4,0,0,0,0,0],
-[0,0,8,0,7,1,0,0,0],
-[0,9,0,0,2,0,0,3,7],
-[9,0,5,7,0,0,0,0,8],
-[0,0,7,9,5,8,0,0,0],
-[0,0,1,0,0,4,0,0,0],
-[0,0,0,3,0,0,0,5,0],
-[0,1,0,0,9,0,0,4,0],
-[0,0,0,0,0,0,8,0,2]])
+game.loadBoard([[0,0,0,0,0,6,0,1,0],
+[2,0,6,0,0,1,0,0,3],
+[0,9,0,8,0,4,0,0,6],
+[6,0,5,4,0,0,0,0,8],
+[4,0,0,0,6,8,9,0,0],
+[0,8,0,0,0,5,0,6,0],
+[0,0,0,6,4,0,0,2,0],
+[3,6,2,0,0,0,0,0,0],
+[0,7,4,5,0,0,6,0,0]])
 
 print(game.getSudokuSolutionsLoadString())
 
