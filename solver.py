@@ -50,7 +50,7 @@ class solver:
                     sonly = True # If value is the only one in the subboard
                     for j in self.options.keys():
                         if(j != i):
-                            if(j[0] == j[0]): # True if values are in the same row
+                            if(j[0] == i[0]): # True if values are in the same row
                                 if(val in self.options.get(j)):
                                     ronly = False
                             if(j[1] == i[1]): # True if values are in the same column
@@ -212,6 +212,60 @@ class solver:
         for i in self.options.keys():
             try:
                 self.generateOptions()
+
+                # Row handling
+                pairs = dict({})
+                for j in self.options.keys():
+                    if(j[0] == i[0]):
+                        for k in range(1,self.game.nn+1):
+                            if(k in self.options.get(j)):
+                                if(k in pairs.keys()):
+                                    pairs[k].append(j)
+                                else:
+                                    pairs.update({k:[j]})
+
+                for j in pairs.items():
+                    rmin,rmax,cmin,cmax = self.game.getSubboardIndices(j[1][0][0],j[1][0][1])
+                    if(len(j[1]) <= self.game.n and len(j[1]) > 1):
+                        all_in_sub = True
+                        for k in j[1]:
+                            if(k[1] not in range(cmin,cmax)):
+                                all_in_sub = False
+
+                        if(all_in_sub):
+                            for k in self.options.keys():
+                                if(k not in j[1] and k[0] in range(rmin,rmax) and k[1] in range(cmin,cmax)):
+                                    if(j[0] in self.options.get(k)):
+                                        self.addToBlacklist(k[0],k[1],j[0])
+                                        changes += 1
+
+                # Column handling
+                pairs = dict({})
+                for j in self.options.keys():
+                    if(j[1] == i[1]):
+                        for k in range(1,self.game.nn+1):
+                            if(k in self.options.get(j)):
+                                if(k in pairs.keys()):
+                                    pairs[k].append(j)
+                                else:
+                                    pairs.update({k:[j]})
+
+                for j in pairs.items():
+                    rmin,rmax,cmin,cmax = self.game.getSubboardIndices(j[1][0][0],j[1][0][1])
+                    if(len(j[1]) <= self.game.n and len(j[1]) > 1):
+                        all_in_sub = True
+                        for k in j[1]:
+                            if(k[0] not in range(rmin,rmax)):
+                                all_in_sub = False
+
+                        if(all_in_sub):
+                            for k in self.options.keys():
+                                if(k not in j[1] and k[0] in range(rmin,rmax) and k[1] in range(cmin,cmax)):
+                                    if(j[0] in self.options.get(k)):
+                                        self.addToBlacklist(k[0],k[1],j[0])
+                                        changes += 1
+
+
                 # Subboard handling
                 rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
                 pairs = dict({})
@@ -365,7 +419,8 @@ class solver:
         start_time = datetime.datetime.now()
         total_changes = 0
         changes = 1
-        while(not self.game.checkLegalBoard() and changes != 0): # Continue until board is complete and correct or no changes have been made
+        loss = 0
+        while(not self.game.checkLegalBoard() and loss < 3): # Continue until board is complete and correct or no changes have been made
 
             changes = self.nakedSingle()
 
@@ -387,6 +442,11 @@ class solver:
 
             total_changes += changes
 
+            if(changes == 0):
+                loss += 1
+            else:
+                loss = 0
+
         # Output board in final state and whether it is solved or not
         print()
         self.game.printBoard()
@@ -400,15 +460,15 @@ class solver:
 game = sudoku(3)
 
 # Board presets can be found in games.txt
-game.loadBoard([[0,0,0,0,0,6,0,1,0],
-[2,0,6,0,0,1,0,0,3],
-[0,9,0,8,0,4,0,0,6],
-[6,0,5,4,0,0,0,0,8],
-[4,0,0,0,6,8,9,0,0],
-[0,8,0,0,0,5,0,6,0],
-[0,0,0,6,4,0,0,2,0],
-[3,6,2,0,0,0,0,0,0],
-[0,7,4,5,0,0,6,0,0]])
+game.loadBoard([[1,0,0,0,0,4,0,5,0],
+[0,0,0,0,2,0,4,0,3],
+[0,0,6,0,0,7,9,0,0],
+[7,6,0,0,0,0,0,1,0],
+[0,0,0,0,3,0,0,0,0],
+[0,2,0,0,0,0,0,9,4],
+[0,0,7,9,0,0,5,0,0],
+[3,0,2,0,8,0,0,0,0],
+[0,1,0,2,0,0,0,0,9]])
 
 print(game.getSudokuSolutionsLoadString())
 
