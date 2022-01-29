@@ -6,6 +6,17 @@ Easy: Naked Pair, Hidden Pair, Pointing Pairs
 Medium: Naked Triple, Naked Quad, Pointing Triples, Hidden Triple, Hidden Quad
 Hard: XWing, Swordfish, Jellyfish, XYWing, XYZWing
 
+Fully Solved Board
+[[4,6,8,5,7,3,9,1,2],
+[2,5,3,4,9,1,8,6,7],
+[9,7,1,2,6,8,5,3,4],
+[5,1,2,8,3,7,6,4,9],
+[6,3,4,9,1,2,7,5,8],
+[7,8,9,6,4,5,3,2,1],
+[8,9,5,1,2,6,4,7,3],
+[1,4,7,3,5,9,2,8,6],
+[3,2,6,7,8,4,1,9,5]]
+
 Blank Board
 [[0,0,0,0,0,0,0,0,0],
 [0,0,0,0,0,0,0,0,0],
@@ -137,7 +148,7 @@ Medium
 [0,0,7,0,0,9,0,0,6],
 [0,0,6,0,0,0,1,0,0]]
 
-
+Unsolved
 Medium
 [[1,0,0,0,0,4,0,5,0],
 [0,0,0,0,2,0,4,0,3],

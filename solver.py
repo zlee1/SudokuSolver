@@ -1,6 +1,8 @@
 from game import sudoku
 import numpy as np
 import datetime
+import random
+import math
 
 class solver:
 
@@ -397,9 +399,6 @@ class solver:
                                             self.addToBlacklist(blacklist_cell[0],blacklist_cell[1],blacklist_val)
                                             #print("Blacklisted",blacklist_cell[0],blacklist_cell[1],blacklist_val)
                                             changes += 1
-
-
-
             except Exception as e:
                 print(e)
         return changes
@@ -413,6 +412,98 @@ class solver:
         else:
             self.blacklistedOptions.update({(row,col):[val]})
             #print("Blacklisted",row+1,col+1,val)
+
+    # Generate a legal, solved board
+    def generateSolvedBoard(self,sub_size):
+        board = np.array([[0]*sub_size*sub_size]*sub_size*sub_size)
+        test_game = sudoku(sub_size)
+        board[0] = list(range(1,sub_size*sub_size+1))
+        for i in range(1,sub_size):
+            board[i] = self.shiftRow(board[i-1],sub_size)
+        for i in range(sub_size,sub_size*sub_size):
+            board[i] = self.shiftRow(board[i-sub_size],1)
+        test_game.loadBoard(board)
+        for i in board:
+            print(i)
+        return board
+
+    # Shift a row to the right by nshift
+    def shiftRow(self,row,nshift):
+        return list(row[nshift:]) + list(row[:nshift])
+
+    # Shuffle a fully solved board
+    def shuffleSolvedBoard(self,board):
+        for i in range(random.randint(100,200)):
+            r = random.randint(1,6)
+            if(r == 1):
+                board = self.subShift(board)
+            elif(r == 2):
+                rotated = np.rot90(board,3)
+                rotated = self.subShift(rotated)
+                board = np.rot90(rotated,1)
+            elif(r == 3):
+                board = self.individualShift(board)
+            elif(r == 4):
+                rotated = np.rot90(board,3)
+                rotated = self.individualShift(rotated)
+                board = np.rot90(rotated,1)
+            elif(r == 5):
+                board = np.rot90(board,1)
+            else:
+                order = list(np.arange(1,len(board)+1,1))
+                random.shuffle(order)
+                for i in range(len(board)):
+                    for j in range(len(board)):
+                        board[i][j] = order[board[i][j]-1]
+        test_game = sudoku(int(math.sqrt(len(board))))
+        test_game.loadBoard(board)
+        if(not test_game.checkLegalBoard()):
+            print("Illegal Board Generated")
+        return board
+
+    # Shift subboards
+    def subShift(self,board):
+        sub_size = int(math.sqrt(len(board)))
+        copy = board.copy()
+        board[sub_size*sub_size-sub_size:] = copy[:sub_size]
+        board[:sub_size*sub_size-sub_size] = copy[sub_size:]
+        return board
+
+    # Shift individual rows within subboards
+    def individualShift(self,board):
+        sub_size = int(math.sqrt(len(board)))
+        i = random.randint(1,sub_size)
+        sub = board[(i-1)*sub_size:i*sub_size]
+        sub_copy = sub.copy()
+        sub[0] = sub_copy[-1]
+        sub[1:] = sub_copy[:-1]
+        board[(i-1)*sub_size:i*sub_size] = sub
+        return board
+
+    # Generate a legal sudoku board with a specified difficulty and size
+    def generateBoard(self,difficulty,sub_size=3):
+        board = self.shuffleSolvedBoard(self.generateSolvedBoard(sub_size))
+        n = int(math.sqrt(len(board)))
+        nn = n*n
+        test_game = sudoku(int(math.sqrt(len(board))))
+        test_game.loadBoard(board)
+        self.game = test_game
+        # Easy puzzles can be solved using only naked single technique
+        if(difficulty == "easy"):
+            for i in range(nn*nn*2):
+                row = random.randint(0,nn-1)
+                col = random.randint(0,nn-1)
+                original_value = board[row][col]
+                if(original_value != 0):
+                    board[row][col] = 0
+                    self.game.loadBoard(board)
+                    changes = 1
+                    while(changes != 0):
+                        changes = self.nakedSingle()
+                    if(not self.game.checkLegalBoard()):
+                        board[row][col] = original_value
+            self.game.loadBoard(board)
+        return board
 
     # Run solver
     def solve(self):
@@ -460,18 +551,32 @@ class solver:
 game = sudoku(3)
 
 # Board presets can be found in games.txt
-game.loadBoard([[1,0,0,0,0,4,0,5,0],
-[0,0,0,0,2,0,4,0,3],
-[0,0,6,0,0,7,9,0,0],
-[7,6,0,0,0,0,0,1,0],
-[0,0,0,0,3,0,0,0,0],
-[0,2,0,0,0,0,0,9,4],
-[0,0,7,9,0,0,5,0,0],
-[3,0,2,0,8,0,0,0,0],
-[0,1,0,2,0,0,0,0,9]])
+"""game.loadBoard([[0,0,8,0,0,0,9,0,0],
+[2,0,0,4,0,0,8,0,0],
+[0,0,0,0,6,8,0,3,0],
+[5,1,2,8,3,0,0,0,0],
+[6,3,4,0,0,0,7,0,8],
+[0,0,0,0,4,5,0,2,0],
+[0,9,0,0,2,0,0,0,0],
+[0,0,7,0,0,9,0,0,6],
+[0,0,6,0,0,0,1,0,0]])
 
-print(game.getSudokuSolutionsLoadString())
+print(game.getSudokuSolutionsLoadString())"""
 
 solver = solver(game)
 
-solver.solve()
+#solver.solve()
+
+#board = solver.generateSolvedBoard(3)
+
+#solver.shuffleSolvedBoard(board)
+
+#solver.individualShift(board)
+
+board = solver.generateBoard("easy",3)
+
+#print(solver.game.getSudokuSolutionsLoadString())
+
+print()
+print()
+print(board)
