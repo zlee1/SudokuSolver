@@ -472,12 +472,47 @@ class solver:
                 random.shuffle(order)
                 for i in range(len(board)):
                     for j in range(len(board)):
-                        board[i][j] = order[board[i][j]-1]
+                        if(board[i][j] != 0):
+                            board[i][j] = order[board[i][j]-1]
         # Ensure that the board is still legal
         test_game = sudoku(int(math.sqrt(len(board))))
         test_game.loadBoard(board)
         if(not test_game.checkLegalBoard()):
             print("Illegal Board Generated")
+        return board
+
+    # Shuffle an unsolved board
+    def shuffleUnsolvedBoard(self,board):
+        # Random range determined in a way that will ensure well-shuffled board
+        for i in range(random.randint(len(board)*len(board),len(board)*len(board)*2)):
+            r = random.randint(1,6)
+            if(r == 1):
+                # Perform a row-wise subboard shift
+                board = self.subShift(board)
+            elif(r == 2):
+                # Perform a column-wise subboard shift
+                rotated = np.rot90(board,3)
+                rotated = self.subShift(rotated)
+                board = np.rot90(rotated,1)
+            elif(r == 3):
+                # Perform a subboard-wise row shift
+                board = self.individualShift(board)
+            elif(r == 4):
+                # Perform a subboard-wise column shift
+                rotated = np.rot90(board,3)
+                rotated = self.individualShift(rotated)
+                board = np.rot90(rotated,1)
+            elif(r == 5):
+                # Rotate the board
+                board = np.rot90(board,1)
+            else:
+                # Randomly change values (ex: all 1s become 5s, all 2s become 3s, etc.)
+                order = list(np.arange(1,len(board)+1,1))
+                random.shuffle(order)
+                for i in range(len(board)):
+                    for j in range(len(board)):
+                        if(board[i][j] != 0):
+                            board[i][j] = order[board[i][j]-1]
         return board
 
     # Shift subboards row-wise (2nd row of subboards becomes 1st, 3rd becomes 2nd, etc.)
@@ -675,7 +710,7 @@ class solver:
 
         # Output board in final state and whether it is solved or not
         print()
-        self.game.printBoard()
+        #self.game.printBoard()
         print(f"Total Changes: {total_changes}")
         if(self.game.checkLegalBoard()):
             print("Solved")
