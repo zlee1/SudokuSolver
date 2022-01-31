@@ -1,12 +1,14 @@
 from sudoku import sudoku
 from solver import solver
-import math, threading
+import math
+from multiprocessing import Process
 
-# Generate boards with multithreading
-def threadedGeneration(nthreads,nboards,sub_size=3,difficulty="any"):
-    nper_thread = int(math.ceil(nboards/nthreads))
-    for i in range(nthreads):
+# Generate nboards on nprocesses using multiprocessing
+def multiprocessingGeneration(nprocesses,nboards,sub_size=3,difficulty="any"):
+    for i in range(nprocesses):
         s = solver(sudoku(3))
-        threading.Thread(target = s.generateNBoards, args = (nper_thread, sub_size, difficulty)).start()
+        p = Process(target=s.generateNBoards, args = (nper_process, sub_size, difficulty))
+        p.start()
 
-threadedGeneration(4,8,3,"any")
+if __name__ == '__main__':
+    multiprocessingGeneration(4,8,3,"any")
