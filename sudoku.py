@@ -81,7 +81,8 @@ class sudoku:
             self.board[row][col] = val
             #print(row+1,col+1,val)
         else:
-            print(f"Cannot make move {row}, {col}, {val}")
+            pass
+            #print(f"Cannot make move {row}, {col}, {val}")
 
     # Find the indices of the current subboard based on row and column
     def getSubboardIndices(self, row, col):
@@ -124,3 +125,60 @@ class sudoku:
                 else:
                     load += str(j)
         return load + ")"
+
+    # Convert board into a string that can be nicely saved in text file
+    def getSaveString(self):
+        save = ""
+        for i in self.board:
+            for j in i:
+                save += str(j)
+                save += ","
+        save = save[:-1]
+        save += "\n"
+        return save
+
+    # Load a save string
+    def loadSaveString(self,save):
+        split = save.split(",")
+        size = len(split)
+        for i in range(size):
+            split[i] = int(split[i])
+        self.nn = int(math.sqrt(size))
+        self.n = int(math.sqrt(self.nn))
+        board = []
+        for i in range(self.nn):
+            # Append each row as its own list
+            board.append(split[i*self.nn:(i+1)*self.nn])
+        self.loadBoard(board)
+
+    # Print the board in a clean, readable format
+    def prettyPrint(self):
+        for i in range(self.nn):
+            # Print a blank line between subboards
+            if(i%self.n == 0):
+                print()
+            for j in range(self.nn):
+                # Print a blank line between subbboards
+                if(j%self.n == 0):
+                    print("  ",end="")
+                if(j == self.nn-1):
+                    # Print "_" for empty values instead of 0
+                    if(self.board[i][j] == 0):
+                        print("_")
+                    else:
+                        print(self.board[i][j])
+                else:
+                    # End_val is the spaces added to the end of the value
+                    # Appropriate number of spaces is the required number of spaces for
+                    # the cell string to have the same length as the longest possible cell string + 1
+                    # ex: max number = 100, current number = 1, # of spaces = 2 (+1)
+                    end_val = " "
+                    if(self.board[i][j] == 0):
+                        # Print "_" for empty values instead of 0
+                        for k in range(len(str(self.nn))-len("_")):
+                            end_val += " "
+                        print("_",end=end_val)
+                    else:
+                        for k in range(len(str(self.nn))-len(str(self.board[i][j]))):
+                            end_val += " "
+                        print(self.board[i][j],end=end_val)

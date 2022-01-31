@@ -1,8 +1,9 @@
-from game import sudoku
+from sudoku import sudoku
 import numpy as np
 import datetime
 import random
 import math
+import threading
 
 class solver:
 
@@ -219,6 +220,7 @@ class solver:
                 pairs = dict({})
                 for j in self.options.keys():
                     if(j[0] == i[0]):
+                        # Update dictionary for each value that is an option for this cell
                         for k in range(1,self.game.nn+1):
                             if(k in self.options.get(j)):
                                 if(k in pairs.keys()):
@@ -228,7 +230,9 @@ class solver:
 
                 for j in pairs.items():
                     rmin,rmax,cmin,cmax = self.game.getSubboardIndices(j[1][0][0],j[1][0][1])
+                    # Continue if the value has possible cells > 1 and <= the subboard size
                     if(len(j[1]) <= self.game.n and len(j[1]) > 1):
+                        # Check to ensure that the pair is contained in one subboard
                         all_in_sub = True
                         for k in j[1]:
                             if(k[1] not in range(cmin,cmax)):
@@ -236,6 +240,7 @@ class solver:
 
                         if(all_in_sub):
                             for k in self.options.keys():
+                                # If the value is not in the pair and is in the subboard, blacklist pair value
                                 if(k not in j[1] and k[0] in range(rmin,rmax) and k[1] in range(cmin,cmax)):
                                     if(j[0] in self.options.get(k)):
                                         self.addToBlacklist(k[0],k[1],j[0])
@@ -245,6 +250,7 @@ class solver:
                 pairs = dict({})
                 for j in self.options.keys():
                     if(j[1] == i[1]):
+                        # Update dictionary for each value that is an option for this cell
                         for k in range(1,self.game.nn+1):
                             if(k in self.options.get(j)):
                                 if(k in pairs.keys()):
@@ -254,7 +260,9 @@ class solver:
 
                 for j in pairs.items():
                     rmin,rmax,cmin,cmax = self.game.getSubboardIndices(j[1][0][0],j[1][0][1])
+                    # Continue if the value has possible cells > 1 and <= the subboard size
                     if(len(j[1]) <= self.game.n and len(j[1]) > 1):
+                        # Check to ensure that the pair is contained in one subboard
                         all_in_sub = True
                         for k in j[1]:
                             if(k[0] not in range(rmin,rmax)):
@@ -262,6 +270,7 @@ class solver:
 
                         if(all_in_sub):
                             for k in self.options.keys():
+                                # If the value is not in the pair and is in the subboard, blacklist pair value
                                 if(k not in j[1] and k[0] in range(rmin,rmax) and k[1] in range(cmin,cmax)):
                                     if(j[0] in self.options.get(k)):
                                         self.addToBlacklist(k[0],k[1],j[0])
@@ -415,53 +424,63 @@ class solver:
 
     # Generate a legal, solved board
     def generateSolvedBoard(self,sub_size):
+        # First row is all possible values in ascending order
         board = np.array([[0]*sub_size*sub_size]*sub_size*sub_size)
         test_game = sudoku(sub_size)
         board[0] = list(range(1,sub_size*sub_size+1))
+        # Other rows in same subboard are the same, but shifted sub_size times
         for i in range(1,sub_size):
             board[i] = self.shiftRow(board[i-1],sub_size)
+        # Other rows in other subboards take from the same row in the previous
+        # subboard and then shift once
         for i in range(sub_size,sub_size*sub_size):
             board[i] = self.shiftRow(board[i-sub_size],1)
         test_game.loadBoard(board)
-        for i in board:
-            print(i)
         return board
 
-    # Shift a row to the right by nshift
+    # Shift a row to the left by nshift such that the front wraps around to the back
     def shiftRow(self,row,nshift):
         return list(row[nshift:]) + list(row[:nshift])
 
     # Shuffle a fully solved board
     def shuffleSolvedBoard(self,board):
-        for i in range(random.randint(100,200)):
+        # Random range determined in a way that will ensure well-shuffled board
+        for i in range(random.randint(len(board)*len(board),len(board)*len(board)*2)):
             r = random.randint(1,6)
             if(r == 1):
+                # Perform a row-wise subboard shift
                 board = self.subShift(board)
             elif(r == 2):
+                # Perform a column-wise subboard shift
                 rotated = np.rot90(board,3)
                 rotated = self.subShift(rotated)
                 board = np.rot90(rotated,1)
             elif(r == 3):
+                # Perform a subboard-wise row shift
                 board = self.individualShift(board)
             elif(r == 4):
+                # Perform a subboard-wise column shift
                 rotated = np.rot90(board,3)
                 rotated = self.individualShift(rotated)
                 board = np.rot90(rotated,1)
             elif(r == 5):
+                # Rotate the board
                 board = np.rot90(board,1)
             else:
+                # Randomly change values (ex: all 1s become 5s, all 2s become 3s, etc.)
                 order = list(np.arange(1,len(board)+1,1))
                 random.shuffle(order)
                 for i in range(len(board)):
                     for j in range(len(board)):
                         board[i][j] = order[board[i][j]-1]
+        # Ensure that the board is still legal
         test_game = sudoku(int(math.sqrt(len(board))))
         test_game.loadBoard(board)
         if(not test_game.checkLegalBoard()):
             print("Illegal Board Generated")
         return board
 
-    # Shift subboards
+    # Shift subboards row-wise (2nd row of subboards becomes 1st, 3rd becomes 2nd, etc.)
     def subShift(self,board):
         sub_size = int(math.sqrt(len(board)))
         copy = board.copy()
@@ -469,41 +488,157 @@ class solver:
         board[:sub_size*sub_size-sub_size] = copy[sub_size:]
         return board
 
-    # Shift individual rows within subboards
+    # Shift individual row within subboard (within a subboard, 2nd row becomes 1st, 3rd becomes 2nd, etc.)
     def individualShift(self,board):
         sub_size = int(math.sqrt(len(board)))
+        # Randomly pick a subboard to apply shift to
         i = random.randint(1,sub_size)
         sub = board[(i-1)*sub_size:i*sub_size]
         sub_copy = sub.copy()
+
         sub[0] = sub_copy[-1]
         sub[1:] = sub_copy[:-1]
         board[(i-1)*sub_size:i*sub_size] = sub
         return board
 
-    # Generate a legal sudoku board with a specified difficulty and size
-    def generateBoard(self,difficulty,sub_size=3):
-        board = self.shuffleSolvedBoard(self.generateSolvedBoard(sub_size))
-        n = int(math.sqrt(len(board)))
-        nn = n*n
-        test_game = sudoku(int(math.sqrt(len(board))))
-        test_game.loadBoard(board)
-        self.game = test_game
-        # Easy puzzles can be solved using only naked single technique
-        if(difficulty == "easy"):
-            for i in range(nn*nn*2):
-                row = random.randint(0,nn-1)
-                col = random.randint(0,nn-1)
-                original_value = board[row][col]
-                if(original_value != 0):
-                    board[row][col] = 0
-                    self.game.loadBoard(board)
-                    changes = 1
-                    while(changes != 0):
-                        changes = self.nakedSingle()
-                    if(not self.game.checkLegalBoard()):
-                        board[row][col] = original_value
+    # Generate a legal puzzle with a given difficulty and subboard size
+    def generateBoard(self,sub_size=3,difficulty="any"):
+        done = False
+        while(not done):
+            # Start with a fully solved, shuffled board
+            board = self.shuffleSolvedBoard(self.generateSolvedBoard(sub_size))
+            test_game = sudoku(sub_size)
+            test_game.loadBoard(board)
+            self.game = test_game
+            n = sub_size
+            nn = n*n
+            # Generate all possible cell indices
+            positions = []
+            for i in range(nn):
+                for j in range(nn):
+                    positions.append([i,j])
+
+
+            for i in range(nn*nn):
+                # Choose a random cell and set its value to 0
+                cell = random.choice(positions)
+                original_val = board[cell[0],cell[1]]
+                board[cell[0],cell[1]] = 0
+
+                # Load the board in its current state and clear blacklist dictionary
+                self.game.loadBoard(board)
+                self.blacklistedOptions = dict({})
+
+                # Check if the puzzle is solvable
+                changes = 1
+                while(changes != 0):
+                    changes = self.nakedSingle()
+
+                    # Hidden singles can only be used in puzzles with difficulties >= normal
+                    if(changes == 0 and difficulty in ["normal","medium","hardish","any"]):
+                        changes += self.hiddenSingle()
+
+                    # Naked pairs can only be used in puzzles with difficulties >= medium
+                    if(changes == 0 and difficulty in ["medium","hardish","any"]):
+                        changes += self.nakedPair()
+
+                    # Hidden pairs can only be used in puzzles with difficulties >= medium
+                    if(changes == 0 and difficulty in ["medium","hardish","any"]):
+                        changes += self.hiddenPair()
+
+                    # Pointing pairs can only be used in puzzles with difficulties >= medium
+                    if(changes == 0 and difficulty in ["medium","hardish","any"]):
+                        changes += self.pointingPair()
+
+                    # Naked triples can only be used in puzzles with difficulties >= hardish
+                    if(changes == 0 and difficulty in ["hardish","any"]):
+                        changes += self.nakedTriple()
+
+                # If the board is not legal and solved, revert back to the last legal board
+                if(not self.game.checkLegalBoard()):
+                    board[cell[0],cell[1]] = original_val
+                # If the board is legal and solved, remove the cell from the list of cells
+                else:
+                    positions.remove(cell)
+
             self.game.loadBoard(board)
+
+            # Check to ensure that the puzzle difficulty matches requirements
+            generated_difficulty = self.rateDifficulty(board)
+            if(difficulty == "any" or generated_difficulty == difficulty):
+                done = True
+            else:
+                print(f"Regenerating, difficulty was {generated_difficulty}, but expected was {difficulty}")
+        print(generated_difficulty)
+        self.game.loadBoard(board)
+
+        # Write the board to a file based on difficulty and subboard size
+        with open(f'GeneratedBoards\\{generated_difficulty}_{sub_size}.txt', 'a') as f:
+            f.write(self.game.getSaveString())
         return board
+
+    # Rate a puzzle's difficulty
+    def rateDifficulty(self,board):
+        # Keep track of the number of times a technique of each difficulty is used
+        easy = 0
+        normal = 0
+        medium = 0
+        hardish = 0
+
+        # Load board, generate options, and clear the blacklist
+        self.game.loadBoard(board)
+        self.generateOptions()
+        self.blacklistedOptions = dict({})
+
+        # Solve the board and keep track of technique difficulty usage
+        changes = 1
+        while(changes > 0):
+            changes = self.nakedSingle()
+            if(changes > 0):
+                easy += 1
+
+            if(changes == 0):
+                changes += self.hiddenSingle()
+                if(changes > 0):
+                    normal += 1
+
+            if(changes == 0):
+                changes += self.nakedPair()
+                if(changes > 0):
+                    medium += 1
+
+            if(changes == 0):
+                changes += self.hiddenPair()
+                if(changes > 0):
+                    medium += 1
+
+            if(changes == 0):
+                changes += self.pointingPair()
+                if(changes > 0):
+                    medium += 1
+
+            if(changes == 0):
+                changes += self.nakedTriple()
+                if(changes > 0):
+                    hardish += 1
+
+        # Return calculated difficulty
+        if(self.game.checkLegalBoard()):
+            if(hardish > 0):
+                return "hardish"
+            elif(medium > 0):
+                return "medium"
+            elif(normal > 0):
+                return "normal"
+            elif(easy > 0):
+                return "easy"
+        else:
+            return "illegal"
+
+    # Multithreading the board generation process | To be implemented
+    def threadedGeneration(self,nthreads,nboards,sub_size=3,difficulty="any"):
+        pass
+
 
     # Run solver
     def solve(self):
@@ -547,36 +682,3 @@ class solver:
             print("Time to solve:",datetime.datetime.now()-start_time) # Show time to complete puzzle
         else:
             print("Unsolved")
-
-game = sudoku(3)
-
-# Board presets can be found in games.txt
-"""game.loadBoard([[0,0,8,0,0,0,9,0,0],
-[2,0,0,4,0,0,8,0,0],
-[0,0,0,0,6,8,0,3,0],
-[5,1,2,8,3,0,0,0,0],
-[6,3,4,0,0,0,7,0,8],
-[0,0,0,0,4,5,0,2,0],
-[0,9,0,0,2,0,0,0,0],
-[0,0,7,0,0,9,0,0,6],
-[0,0,6,0,0,0,1,0,0]])
-
-print(game.getSudokuSolutionsLoadString())"""
-
-solver = solver(game)
-
-#solver.solve()
-
-#board = solver.generateSolvedBoard(3)
-
-#solver.shuffleSolvedBoard(board)
-
-#solver.individualShift(board)
-
-board = solver.generateBoard("easy",3)
-
-#print(solver.game.getSudokuSolutionsLoadString())
-
-print()
-print()
-print(board)
