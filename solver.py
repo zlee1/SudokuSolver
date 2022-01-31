@@ -635,10 +635,10 @@ class solver:
         else:
             return "illegal"
 
-    # Multithreading the board generation process | To be implemented
-    def threadedGeneration(self,nthreads,nboards,sub_size=3,difficulty="any"):
-        pass
-
+    # Generate multiple boards
+    def generateNBoards(self,n,sub_size=3,difficulty="any"):
+        for i in range(n):
+            self.generateBoard(sub_size,difficulty)
 
     # Run solver
     def solve(self):

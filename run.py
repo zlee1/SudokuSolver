@@ -1,11 +1,12 @@
 from sudoku import sudoku
 from solver import solver
+import math, threading
 
-# Create game
-game = sudoku(3)
+# Generate boards with multithreading
+def threadedGeneration(nthreads,nboards,sub_size=3,difficulty="any"):
+    nper_thread = int(math.ceil(nboards/nthreads))
+    for i in range(nthreads):
+        s = solver(sudoku(3))
+        threading.Thread(target = s.generateNBoards, args = (nper_thread, sub_size, difficulty)).start()
 
-solver = solver(game)
-
-# Generate boards
-while 1:
-    solver.generateBoard(3, "any")
+threadedGeneration(4,8,3,"any")
