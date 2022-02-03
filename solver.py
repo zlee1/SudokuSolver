@@ -321,8 +321,8 @@ class solver:
                 print(e)
         return changes
 
-    # Handle naked triples
-    def nakedTriple(self):
+    # Handle naked triples, quads, quints, etc.
+    def nakedSet(self, set_size):
         changes = 0
         for i in self.options.keys():
             try:
@@ -341,10 +341,10 @@ class solver:
                 for original_house in [row,col,subboard]:
                     house = original_house.copy()
                     # Remove cells that have more than 3 options
-                    if(len(house) >= 3):
+                    if(len(house) >= set_size):
                         remove_cells = []
                         for cell in house:
-                            if(len(self.options.get(cell)) > 3):
+                            if(len(self.options.get(cell)) > set_size):
                                 remove_cells.append(cell)
                         if(len(remove_cells) > 0):
                             for cell in remove_cells:
@@ -352,7 +352,7 @@ class solver:
                                     house.remove(cell)
 
                     # Remove cells that contain values that only appear once
-                    if(len(house) >= 3):
+                    if(len(house) >= set_size):
                         remove_cells = []
                         for cell in house:
                             for val in self.options.get(cell):
@@ -369,14 +369,14 @@ class solver:
                                     house.remove(cell)
 
                     # Remove cells that contain values that do not appear with at least 2 of the remaining values
-                    if(len(house) >= 3):
+                    if(len(house) >= set_size):
                         remaining_values = []
                         remove_cells = []
                         for cell in house:
                             for val in self.options.get(cell):
                                 if(val not in remaining_values):
                                     remaining_values.append(val)
-                        if(len(remaining_values) >= 3):
+                        if(len(remaining_values) >= set_size):
                             for cell in house:
                                 for val in self.options.get(cell):
                                     appears_with = []
@@ -393,14 +393,14 @@ class solver:
                                     house.remove(cell)
 
                     # Check if there is naked triple
-                    if(len(house) >= 3):
+                    if(len(house) >= set_size):
                         remaining_values = []
                         for cell in house:
                             for val in self.options.get(cell):
                                 if(val not in remaining_values):
                                     remaining_values.append(val)
-                        if(len(remaining_values) == 3):
-                            #print("Naked Triple Found!",house)
+                        if(len(remaining_values) == set_size):
+                            #print(f"Naked {set_size} Found!",house,remaining_values)
                             for blacklist_cell in original_house:
                                 if(blacklist_cell not in house):
                                     for blacklist_val in self.options.get(blacklist_cell):
@@ -412,15 +412,91 @@ class solver:
                 print(e)
         return changes
 
+    # Handle hidden triples, quads, quints, etc.
+    def hiddenSet(self, set_size):
+        changes = 0
+        for i in self.options.keys():
+            try:
+                self.generateOptions()
+                row = []
+                col = []
+                subboard = []
+                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
+                for j in self.options.keys():
+                    if(j[0] == i[0]):
+                        row.append(j)
+                    if(j[1] == i[1]):
+                        col.append(j)
+                    if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
+                        subboard.append(j)
+                for original_house in [row,col,subboard]:
+                    house = original_house.copy()
+
+                    value_cells = dict({})
+                    for cell in original_house:
+                        for value in self.options.get(cell):
+                            if(value not in value_cells.keys()):
+                                value_cells.update({value:[cell]})
+                            else:
+                                value_cells[value].append(cell)
+
+                    if(len(value_cells.keys()) >= set_size):
+                        remove_values = []
+                        for value in value_cells.keys():
+                            if(len(value_cells.get(value)) > set_size):
+                                remove_values.append(value)
+                        for value in remove_values:
+                            value_cells.pop(value)
+
+                    # Remove values that do not appear with at least 2 of the remaining values
+                    if(len(value_cells.keys()) >= set_size):
+                        remaining_values = value_cells.keys()
+                        remove_values = []
+                        if(len(remaining_values) >= set_size):
+                            for val in remaining_values:
+                                appears_with = []
+                                for cell in house:
+                                    if(val in self.options.get(cell)):
+                                        for val2 in self.options.get(cell):
+                                            if(val2 not in appears_with and val2 in remaining_values):
+                                                appears_with.append(val2)
+                                if(len(appears_with) < 2):
+                                    remove_values.append(val)
+                        if(len(remove_values) > 0):
+                            for value in remove_values:
+                                if(value in value_cells.keys()):
+                                    value_cells.pop(value)
+
+                    if(len(value_cells.keys()) == set_size):
+                        all_cells = []
+                        for cells in value_cells.values():
+                            for cell in cells:
+                                if(cell not in all_cells):
+                                    all_cells.append(cell)
+                        if(len(all_cells) == set_size):
+                            #print(f"Hidden {set_size} Found!", value_cells)
+                            for cell in all_cells:
+                                for val in self.options.get(cell):
+                                    if(val not in value_cells.keys()):
+                                        self.addToBlacklist(cell[0],cell[1],val)
+                                        changes += 1
+
+            except Exception as e:
+                print(e)
+        return changes
+
+    def xWing(self):
+        return 0
+
     # Add value to blacklist for a given cell
     def addToBlacklist(self,row,col,val):
         if((row,col) in self.blacklistedOptions.keys()):
             if(val not in self.blacklistedOptions.get((row,col))):
                 self.blacklistedOptions[(row,col)].append(val)
-                #print("Blacklisted",row+1,col+1,val)
+                print("Blacklisted",row+1,col+1,val)
         else:
             self.blacklistedOptions.update({(row,col):[val]})
-            #print("Blacklisted",row+1,col+1,val)
+            print("Blacklisted",row+1,col+1,val)
 
     # Generate a legal, solved board
     def generateSolvedBoard(self,sub_size):
@@ -569,8 +645,8 @@ class solver:
                 while(changes != 0):
                     changes = self.nakedSingle()
 
-                    # Hidden singles can only be used in puzzles with difficulties >= normal
-                    if(changes == 0 and difficulty in ["normal","medium","hardish","any"]):
+                    # Hidden singles can only be used in puzzles with difficulties >= easyish
+                    if(changes == 0 and difficulty in ["easyish","medium","hardish","any"]):
                         changes += self.hiddenSingle()
 
                     # Naked pairs can only be used in puzzles with difficulties >= medium
@@ -587,7 +663,15 @@ class solver:
 
                     # Naked triples can only be used in puzzles with difficulties >= hardish
                     if(changes == 0 and difficulty in ["hardish","any"]):
-                        changes += self.nakedTriple()
+                        changes += self.nakedSet(3)
+
+                    # Naked quads can only be used in puzzles with difficulties >= hardish
+                    if(changes == 0 and difficulty in ["hardish","any"]):
+                        changes += self.nakedSet(4)
+
+                    for i in range(5,self.game.n*2):
+                        if(changes == 0 and difficulty in ["hard", "any"]):
+                            changes += self.nakedSet(i)
 
                 # If the board is not legal and solved, revert back to the last legal board
                 if(not self.game.checkLegalBoard()):
@@ -616,9 +700,10 @@ class solver:
     def rateDifficulty(self,board):
         # Keep track of the number of times a technique of each difficulty is used
         easy = 0
-        normal = 0
+        easyish = 0
         medium = 0
         hardish = 0
+        hard = 0
 
         # Load board, generate options, and clear the blacklist
         self.game.loadBoard(board)
@@ -635,7 +720,7 @@ class solver:
             if(changes == 0):
                 changes += self.hiddenSingle()
                 if(changes > 0):
-                    normal += 1
+                    easyish += 1
 
             if(changes == 0):
                 changes += self.nakedPair()
@@ -652,19 +737,33 @@ class solver:
                 if(changes > 0):
                     medium += 1
 
-            if(changes == 0):
-                changes += self.nakedTriple()
-                if(changes > 0):
-                    hardish += 1
+            # Find naked sets up to 2*subboard size
+            for i in range(3,self.game.n*2):
+                if(changes == 0):
+                    changes += self.nakedSet(i)
+                    if(changes > 0):
+                        if(i > 3):
+                            hard += 1
+                        else:
+                            hardish += 1
+
+            # Find hidden sets up to 2*subboard size
+            for i in range(3,self.game.n*2):
+                if(changes == 0):
+                    changes += self.hiddenSet(i)
+                    if(changes > 0):
+                        hard += 1
 
         # Return calculated difficulty
         if(self.game.checkLegalBoard()):
+            if(hard > 0):
+                return "hard"
             if(hardish > 0):
                 return "hardish"
             elif(medium > 0):
                 return "medium"
-            elif(normal > 0):
-                return "normal"
+            elif(easyish > 0):
+                return "easyish"
             elif(easy > 0):
                 return "easy"
         else:
@@ -698,8 +797,15 @@ class solver:
             if(changes == 0):
                 changes += self.hiddenPair()
 
-            if(changes == 0):
-                changes += self.nakedTriple()
+            # Try all realistic naked sets for the board size
+            for i in range(3,self.game.n*2):
+                if(changes == 0):
+                    changes += self.nakedSet(i)
+
+            # Try all realistic hidden sets for the board size
+            for i in range(3,self.game.n*2):
+                if(changes == 0):
+                    changes += self.hiddenSet(i)
 
             total_changes += changes
 
