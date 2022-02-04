@@ -1,0 +1,8 @@
+The Python script docgen.py will automatically generate PDFs of sudoku boards as
+well as folders to contain them. The file structure is as follows:
+
+- Board Size
+  - Difficulty
+    - PDF
+    - PDF
+    - PDF
