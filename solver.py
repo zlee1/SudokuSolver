@@ -3,7 +3,6 @@ import numpy as np
 import datetime
 import random
 import math
-import threading
 
 class solver:
 
@@ -517,41 +516,110 @@ class solver:
     # the rows or columns of the rectangle's sides
     def xWing(self):
         changes = 0
-        for i in self.options.keys():
-            self.generateOptions()
+        # For every possible value on the board
+        for val in range(1,self.game.nn):
             try:
-                row = []
-                col = []
-                subboard = []
-                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
-                for j in self.options.keys():
-                    if(j[0] == i[0]):
-                        row.append(j)
-                    if(j[1] == i[1]):
-                        col.append(j)
-                    if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
-                        subboard.append(j)
+                self.generateOptions()
 
-                for val in self.options.get(i):
-                    # Check if the value appears only twice in the row or column
-                    possible_row_cells = []
-                    for cell in row:
-                        for val2 in cell:
-                            if(val2 == val):
-                                possible_row_cells.append(cell)
-                    possible_col_cells = []
-                    for cell in col:
-                        for val2 in cell:
-                            if(val2 == val):
-                                possible_col_cells.append(cell)
+                # Get dictionary of each row/col index and each cell that could be in an X-Wing for that row/col
+                rows = dict({})
+                cols = dict({})
+                for cell in self.options.keys():
+                    # Add each cell that has the current value from each row/col
+                    if(val in self.options.get(cell)):
+                        if(cell[0] in rows.keys()):
+                            rows[cell[0]].append(cell)
+                        else:
+                            rows.update({cell[0]:[cell]})
+                        if(cell[1] in cols.keys()):
+                            cols[cell[1]].append(cell)
+                        else:
+                            cols.update({cell[1]:[cell]})
 
-                    # If there are only 2 possible options in the row and at least 2 in the column, continue
-                    if(len(possible_row_cells) == 2 and len(possible_col_cells) >= 2):
-                        x_wing_cells = [possible_row_cells[0], possible_row_cells[1]]
-                        # Need to figure out logic here
+                # Potential X-Wing rows need to have exactly 2 cells with the current value
+                potential_rows = dict({})
+                for row in rows.keys():
+                    if(len(rows.get(row)) == 2):
+                        potential_rows.update({row:rows.get(row)})
 
+                # Potential X-Wing cols need to have exactly 2 cells with the current value
+                potential_cols = dict({})
+                for col in cols.keys():
+                    if(len(cols.get(col)) == 2):
+                        potential_cols.update({col:cols.get(col)})
 
+                x_wing = []
+                if(len(potential_rows) > 1):
+                    # For every potential row, check if there is another potential row that has its cells in the same columns
+                    for row in potential_rows.keys():
+                        col_vals = sorted([cell[1] for cell in potential_rows.get(row)])
+                        for comp_row in potential_rows.keys():
+                            # If comp_row's cells are in the same columns as the original row's cells, an X-Wing is present
+                            if(sorted(cell[1] for cell in potential_rows.get(comp_row)) == col_vals):
+                                x_wing = [potential_rows.get(row)[0],potential_rows.get(row)[1],potential_rows.get(comp_row)[0],potential_rows.get(comp_row)[1]]
 
+                                # Make sure that not all cells are in the same subboard
+                                indices = [self.game.getSubboardIndices(cell[0],cell[1]) for cell in x_wing]
+                                valid = False
+                                for i in indices:
+                                    if(i != indices[0]):
+                                        valid = True
+
+                                # Make sure that each cell only appears once in the X-Wing
+                                for i in x_wing:
+                                    count = 0
+                                    for j in x_wing:
+                                        if(i == j):
+                                            count += 1
+                                    if(count > 1):
+                                        valid = False
+
+                                if(valid):
+                                    rows = [cell[0] for cell in x_wing]
+                                    cols = [cell[1] for cell in x_wing]
+                                    # Blacklist the current value in cells that are in the same rows and columns of the X-Wing
+                                    for i in self.options.keys():
+                                        if(i not in x_wing and val in self.options.get(i) and (i[0] in rows or i[1] in cols)):
+                                            self.addToBlacklist(i[0],i[1],val)
+                                            changes += 1
+                                else:
+                                    x_wing = []
+
+                if(len(potential_cols) > 1 and x_wing != []):
+                    # For every potential column, check if there is another potential column that has its cells in the same rows
+                    for col in potential_cols.keys():
+                        row_vals = sorted([cell[0] for cell in potential_cols.get(col)])
+                        for comp_col in potential_cols.keys():
+                            # If comp_col's cells are in the same rows as the original col's cells, an X-Wing is present
+                            if(sorted(cell[0] for cell in potential_cols.get(comp_col)) == row_vals):
+                                x_wing = [potential_cols.get(col)[0],potential_cols.get(col)[1],potential_cols.get(comp_col)[0],potential_cols.get(comp_col)[1]]
+
+                                # Make sure that not all cells are in the same subboard
+                                indices = [self.game.getSubboardIndices(cell[0],cell[1]) for cell in x_wing]
+                                valid = False
+                                for i in indices:
+                                    if(i != indices[0]):
+                                        valid = True
+
+                                # Make sure that each cell only appears once in the X-Wing
+                                for i in x_wing:
+                                    count = 0
+                                    for j in x_wing:
+                                        if(i == j):
+                                            count += 1
+                                    if(count > 1):
+                                        valid = False
+
+                                if(valid):
+                                    rows = [cell[0] for cell in x_wing]
+                                    cols = [cell[1] for cell in x_wing]
+                                    # Blacklist the current value in cells that are in the same rows and columns of the X-Wing
+                                    for i in self.options.keys():
+                                        if(i not in x_wing and val in self.options.get(i) and (i[0] in rows or i[1] in cols)):
+                                            self.addToBlacklist(i[0],i[1],val)
+                                            changes += 1
+                                else:
+                                    x_wing = []
             except Exception as e:
                 print(e)
         return changes
@@ -697,7 +765,6 @@ class solver:
                 for j in range(nn):
                     positions.append([i,j])
 
-
             for i in range(nn*nn):
                 # Choose a random cell and set its value to 0
                 cell = random.choice(positions)
@@ -710,36 +777,47 @@ class solver:
 
                 # Check if the puzzle is solvable
                 changes = 1
+                difficulties = ["easy", "easyish", "medium", "hardish", "hard", "any"]
                 while(changes != 0):
                     changes = self.nakedSingle()
 
                     # Hidden singles can only be used in puzzles with difficulties >= easyish
-                    if(changes == 0 and difficulty in ["easyish","medium","hardish","any"]):
+                    if(changes == 0 and difficulty in difficulties[1:]):
                         changes += self.hiddenSingle()
 
                     # Naked pairs can only be used in puzzles with difficulties >= medium
-                    if(changes == 0 and difficulty in ["medium","hardish","any"]):
+                    if(changes == 0 and difficulty in difficulties[2:]):
                         changes += self.nakedPair()
 
                     # Hidden pairs can only be used in puzzles with difficulties >= medium
-                    if(changes == 0 and difficulty in ["medium","hardish","any"]):
+                    if(changes == 0 and difficulty in difficulties[2:]):
                         changes += self.hiddenPair()
 
                     # Pointing pairs can only be used in puzzles with difficulties >= medium
-                    if(changes == 0 and difficulty in ["medium","hardish","any"]):
+                    if(changes == 0 and difficulty in difficulties[2:]):
                         changes += self.pointingPair()
 
                     # Naked triples can only be used in puzzles with difficulties >= hardish
-                    if(changes == 0 and difficulty in ["hardish","any"]):
+                    if(changes == 0 and difficulty in difficulties[3:]):
                         changes += self.nakedSet(3)
 
                     # Naked quads can only be used in puzzles with difficulties >= hardish
-                    if(changes == 0 and difficulty in ["hardish","any"]):
+                    if(changes == 0 and difficulty in difficulties[3:]):
                         changes += self.nakedSet(4)
 
+                    # Naked quints and higher can only be used in puzzles with difficulties >= hard
                     for i in range(5,self.game.n*2):
-                        if(changes == 0 and difficulty in ["hard", "any"]):
+                        if(changes == 0 and difficulty in difficulties[4:]):
                             changes += self.nakedSet(i)
+
+                    # Hidden sets can only be used in puzzles with difficulties >= hard
+                    for i in range(3,self.game.n*2):
+                        if(changes == 0 and difficulty in difficulties[4:]):
+                            changes += self.hiddenSet(i)
+
+                    # X-Wings can only be used in puzzles with difficulties >= hard
+                    if(changes == 0 and difficulty in difficulties[4:]):
+                        changes += self.xWing()
 
                 # If the board is not legal and solved, revert back to the last legal board
                 if(not self.game.checkLegalBoard()):
@@ -810,7 +888,7 @@ class solver:
                 if(changes == 0):
                     changes += self.nakedSet(i)
                     if(changes > 0):
-                        if(i > 3):
+                        if(i > 4):
                             hard += 1
                         else:
                             hardish += 1
@@ -821,6 +899,12 @@ class solver:
                     changes += self.hiddenSet(i)
                     if(changes > 0):
                         hard += 1
+
+            # Find X-Wings
+            if(changes == 0):
+                changes += self.xWing()
+                if(changes > 0):
+                    hard += 1
 
         # Return calculated difficulty
         if(self.game.checkLegalBoard()):
@@ -847,8 +931,7 @@ class solver:
         start_time = datetime.datetime.now()
         total_changes = 0
         changes = 1
-        loss = 0
-        while(not self.game.checkLegalBoard() and loss < 3): # Continue until board is complete and correct or no changes have been made
+        while(not self.game.checkLegalBoard() and changes != 0): # Continue until board is complete and correct or no changes have been made
 
             changes = self.nakedSingle()
 
@@ -875,12 +958,10 @@ class solver:
                 if(changes == 0):
                     changes += self.hiddenSet(i)
 
-            total_changes += changes
-
             if(changes == 0):
-                loss += 1
-            else:
-                loss = 0
+                changes += self.xWing()
+
+            total_changes += changes
 
         # Output board in final state and whether it is solved or not
         print()

@@ -70,13 +70,23 @@ def docGen(board,difficulty):
     doc += f"\draw[step={10/n},align=center,very thick] (0,0) grid (10,10);"
 
     # Adding values into the board as a matrix
-    doc += r"\matrix[matrix of nodes,nodes={inner sep=0pt,text width=" + str(10/nn) + "cm,align=center,minimum height=" + str(10/nn*.98) + "cm}] at (" + str(5) + ", " + str(5) + "){"
+    if(nn in [49]):
+        doc += r"\matrix[matrix of nodes,nodes={inner sep=0pt,text width=" + str(10/nn) + "cm,align=center,minimum height=" + str(10/nn) + "cm}] at (" + str(5) + ", " + str(5) + "){"
+    elif(nn in [36]):
+        doc += r"\matrix[matrix of nodes,nodes={inner sep=0pt,text width=" + str(10/nn) + "cm,align=center,minimum height=" + str(10/nn*.97) + "cm}] at (" + str(5) + ", " + str(5) + "){"
+    elif(nn in [16,25]):
+        doc += r"\matrix[matrix of nodes,nodes={inner sep=0pt,text width=" + str(10/nn) + "cm,align=center,minimum height=" + str(10/nn*.99) + "cm}] at (" + str(5) + ", " + str(5) + "){"
+    else:
+        doc += r"\matrix[matrix of nodes,nodes={inner sep=0pt,text width=" + str(10/nn) + "cm,align=center,minimum height=" + str(10/nn) + "cm}] at (" + str(5) + ", " + str(5) + "){"
 
     # Setting font size to fit cells
     font_size = 30-(n-2)*10
     # Minimum font size
     if(font_size <= 0):
-        font_size = 5
+        if(nn > 36):
+            font_size = 4
+        else:
+            font_size = 5
 
     # Populate the board
     for i in range(nn):
@@ -88,7 +98,9 @@ def docGen(board,difficulty):
             else:
                 # Use different character sets so that puzzle is not multiple numeric digits
                 if(nn >= 16):
-                    if(board[i][j]-1 > 9):
+                    if(nn > 36):
+                        row += r"\color{black}{\fontsize{" + str(font_size) + r"pt}{" + str(font_size) + r"pt}\selectfont " + str(board[i][j]) + "}"
+                    elif(board[i][j]-1 > 9):
                         row += r"\color{black}{\fontsize{" + str(font_size) + r"pt}{" + str(font_size) + r"pt}\selectfont " + str(chr(board[i][j]+54)) + "}"
                     elif(board[i][j]-1 >= 34):
                         row += r"\color{black}{\fontsize{" + str(font_size) + r"pt}{" + str(font_size) + r"pt}\selectfont " + str(chr(board[i][j]+54+6)) + "}"
@@ -153,7 +165,14 @@ def docGen(board,difficulty):
         left=0.50in,%
         right=0.50in,%
         top=1in,%
-        bottom=.7in,%
+        bottom=""".lstrip()
+
+    if(nn > 36):
+        bottom_margin = .5
+    else:
+        bottom_margin = .7
+
+    doc += str(bottom_margin) + r"""in,%
         paperheight=11in,%
         paperwidth=8.5in%
     ]{geometry}%
@@ -172,7 +191,9 @@ def docGen(board,difficulty):
         if(nn <= 9):
             doc += str(i+1) + ", "
         elif(nn >= 16):
-            if(i > 9):
+            if(nn > 36):
+                doc += str(i+1) + ", "
+            elif(i > 9):
                 doc += str(chr(i+55)) + ", "
             else:
                 doc += str(i) + ", "
@@ -200,5 +221,5 @@ def docGen(board,difficulty):
             p = os.path.join(final_path, entry)
             os.remove(p)
 
-for i in [2,3,4,5,6]:
-    genPuzzle("easy",i)
+for j in range(3):
+        genPuzzle("hardish",3)
