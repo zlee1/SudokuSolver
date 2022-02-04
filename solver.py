@@ -629,10 +629,10 @@ class solver:
         if((row,col) in self.blacklistedOptions.keys()):
             if(val not in self.blacklistedOptions.get((row,col))):
                 self.blacklistedOptions[(row,col)].append(val)
-                print("Blacklisted",row+1,col+1,val)
+                #print("Blacklisted",row+1,col+1,val)
         else:
             self.blacklistedOptions.update({(row,col):[val]})
-            print("Blacklisted",row+1,col+1,val)
+            #print("Blacklisted",row+1,col+1,val)
 
     # Generate a legal, solved board
     def generateSolvedBoard(self,sub_size):

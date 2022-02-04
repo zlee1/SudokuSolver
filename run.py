@@ -10,11 +10,11 @@ def multiprocessingGeneration(nprocesses,nboards,sub_size=3,difficulty="any"):
         p = Process(target=s.generateNBoards, args = (nboards, sub_size, difficulty))
         p.start()
 
-"""if __name__ == '__main__':
-    multiprocessingGeneration(4,100,3,"any")"""
+if __name__ == '__main__':
+    multiprocessingGeneration(4,100,3,"any")
 
 
-s = solver(sudoku(3))
+"""s = solver(sudoku(3))
 
 s.game.loadBoard([[0,0,3,8,0,0,5,1,0],
 [0,0,8,7,0,0,9,3,0],
@@ -28,4 +28,4 @@ s.game.loadBoard([[0,0,3,8,0,0,5,1,0],
 
 print(s.game.getSudokuSolutionsLoadString())
 
-s.solve()
+s.solve()"""
