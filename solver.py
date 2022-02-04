@@ -321,12 +321,16 @@ class solver:
                 print(e)
         return changes
 
-    # Handle naked triples, quads, quints, etc.
+    # Find naked sets and blacklist impossible options
+    # Naked sets (triples, quads, quints, etc.) are when there are set_size
+    # possible values across set_size cells. This means that any other instance
+    # of those values in the same container can be removed from possible options
     def nakedSet(self, set_size):
         changes = 0
         for i in self.options.keys():
             try:
                 self.generateOptions()
+                # Make lists containing cells of the row, colum, and subboard of the current cell
                 row = []
                 col = []
                 subboard = []
@@ -338,71 +342,82 @@ class solver:
                         col.append(j)
                     if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
                         subboard.append(j)
-                for original_house in [row,col,subboard]:
-                    house = original_house.copy()
-                    # Remove cells that have more than 3 options
-                    if(len(house) >= set_size):
+
+                for original_container in [row,col,subboard]:
+                    container = original_container.copy()
+
+                    # Remove cells that have more than set_size options
+                    if(len(container) >= set_size):
                         remove_cells = []
-                        for cell in house:
+                        for cell in container:
                             if(len(self.options.get(cell)) > set_size):
                                 remove_cells.append(cell)
                         if(len(remove_cells) > 0):
                             for cell in remove_cells:
-                                if(cell in house):
-                                    house.remove(cell)
+                                if(cell in container):
+                                    container.remove(cell)
 
                     # Remove cells that contain values that only appear once
-                    if(len(house) >= set_size):
+                    if(len(container) >= set_size):
                         remove_cells = []
-                        for cell in house:
+                        for cell in container:
                             for val in self.options.get(cell):
+                                # Count how many times a value appears
                                 val_count = 0
-                                for cell2 in house:
+                                for cell2 in container:
                                     if(val in self.options.get(cell2)):
                                         val_count += 1
+                                # Add cells to list for removal
                                 if(val_count < 2):
                                     remove_cells.append(cell)
                                     break
+                        # Remove cells
                         if(len(remove_cells) > 0):
                             for cell in remove_cells:
-                                if(cell in house):
-                                    house.remove(cell)
+                                if(cell in container):
+                                    container.remove(cell)
 
                     # Remove cells that contain values that do not appear with at least 2 of the remaining values
-                    if(len(house) >= set_size):
+                    if(len(container) >= set_size):
                         remaining_values = []
                         remove_cells = []
-                        for cell in house:
+                        # Get list of all values that remain in the container
+                        for cell in container:
                             for val in self.options.get(cell):
                                 if(val not in remaining_values):
                                     remaining_values.append(val)
+
                         if(len(remaining_values) >= set_size):
-                            for cell in house:
+                            for cell in container:
                                 for val in self.options.get(cell):
+                                    # Get the values that the current value appears with in the container
                                     appears_with = []
-                                    for cell2 in house:
+                                    for cell2 in container:
                                         if(val in self.options.get(cell2)):
                                             for val2 in self.options.get(cell2):
                                                 if(val2 != val and val2 not in appears_with and val in remaining_values):
                                                     appears_with.append(val2)
+                                    # If the value only appears with 1 other value, add cell to list for removal
                                     if(len(appears_with) < 2):
                                         remove_cells.append(cell)
+                        # Remove cells
                         if(len(remove_cells) > 0):
                             for cell in remove_cells:
-                                if(cell in house):
-                                    house.remove(cell)
+                                if(cell in container):
+                                    container.remove(cell)
 
-                    # Check if there is naked triple
-                    if(len(house) >= set_size):
+                    # There is a naked set if there are set_size remaining values across set_size cells
+                    if(len(container) >= set_size):
                         remaining_values = []
-                        for cell in house:
+                        for cell in container:
                             for val in self.options.get(cell):
                                 if(val not in remaining_values):
                                     remaining_values.append(val)
                         if(len(remaining_values) == set_size):
-                            #print(f"Naked {set_size} Found!",house,remaining_values)
-                            for blacklist_cell in original_house:
-                                if(blacklist_cell not in house):
+                            #print(f"Naked {set_size} Found!",container,remaining_values)
+                            # Blacklist values of the naked set in other cells of the container
+                            for blacklist_cell in original_container:
+                                if(blacklist_cell not in container):
                                     for blacklist_val in self.options.get(blacklist_cell):
                                         if(blacklist_val in remaining_values):
                                             self.addToBlacklist(blacklist_cell[0],blacklist_cell[1],blacklist_val)
@@ -412,12 +427,16 @@ class solver:
                 print(e)
         return changes
 
-    # Handle hidden triples, quads, quints, etc.
+    # Find hidden sets and blacklist impossible options
+    # Hidden sets (triples, quads, quints, etc.) are when there are set_size
+    # possible values that only occur in set_size cells. This means that any other
+    # values in those cells can be removed
     def hiddenSet(self, set_size):
         changes = 0
         for i in self.options.keys():
             try:
                 self.generateOptions()
+                # Make lists containing cells of the row, colum, and subboard of the current cell
                 row = []
                 col = []
                 subboard = []
@@ -429,17 +448,19 @@ class solver:
                         col.append(j)
                     if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
                         subboard.append(j)
-                for original_house in [row,col,subboard]:
-                    house = original_house.copy()
+                for original_container in [row,col,subboard]:
+                    container = original_container.copy()
 
+                    # For each value, get the cells that it shows up in
                     value_cells = dict({})
-                    for cell in original_house:
+                    for cell in original_container:
                         for value in self.options.get(cell):
                             if(value not in value_cells.keys()):
                                 value_cells.update({value:[cell]})
                             else:
                                 value_cells[value].append(cell)
 
+                    # If the total number of values is less than set_size, it is impossible for there to be a hidden triple
                     if(len(value_cells.keys()) >= set_size):
                         remove_values = []
                         for value in value_cells.keys():
@@ -454,19 +475,24 @@ class solver:
                         remove_values = []
                         if(len(remaining_values) >= set_size):
                             for val in remaining_values:
+                                # Get the values that the current value appears with in the container
                                 appears_with = []
-                                for cell in house:
+                                for cell in container:
                                     if(val in self.options.get(cell)):
                                         for val2 in self.options.get(cell):
                                             if(val2 not in appears_with and val2 in remaining_values):
                                                 appears_with.append(val2)
+                                # If the value appears with less than 2 others, append it to list to be removed
                                 if(len(appears_with) < 2):
                                     remove_values.append(val)
+
+                        # Remove values
                         if(len(remove_values) > 0):
                             for value in remove_values:
                                 if(value in value_cells.keys()):
                                     value_cells.pop(value)
 
+                    # If the remaining number of values and cells both equal set_size, there is a hidden set
                     if(len(value_cells.keys()) == set_size):
                         all_cells = []
                         for cells in value_cells.values():
@@ -480,13 +506,55 @@ class solver:
                                     if(val not in value_cells.keys()):
                                         self.addToBlacklist(cell[0],cell[1],val)
                                         changes += 1
-
             except Exception as e:
                 print(e)
         return changes
 
+    # Find X-Wing patterns and blacklist impossible options
+    # X-Wing is when a rectangle can be formed by 4 cells that have the same value
+    # as one of the options. If two opposite sides of the rectangle are the only two
+    # instances of that value in their row/column, then the value cannot appear in
+    # the rows or columns of the rectangle's sides
     def xWing(self):
-        return 0
+        changes = 0
+        for i in self.options.keys():
+            self.generateOptions()
+            try:
+                row = []
+                col = []
+                subboard = []
+                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
+                for j in self.options.keys():
+                    if(j[0] == i[0]):
+                        row.append(j)
+                    if(j[1] == i[1]):
+                        col.append(j)
+                    if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)):
+                        subboard.append(j)
+
+                for val in self.options.get(i):
+                    # Check if the value appears only twice in the row or column
+                    possible_row_cells = []
+                    for cell in row:
+                        for val2 in cell:
+                            if(val2 == val):
+                                possible_row_cells.append(cell)
+                    possible_col_cells = []
+                    for cell in col:
+                        for val2 in cell:
+                            if(val2 == val):
+                                possible_col_cells.append(cell)
+
+                    # If there are only 2 possible options in the row and at least 2 in the column, continue
+                    if(len(possible_row_cells) == 2 and len(possible_col_cells) >= 2):
+                        x_wing_cells = [possible_row_cells[0], possible_row_cells[1]]
+                        # Need to figure out logic here
+
+
+
+            except Exception as e:
+                print(e)
+        return changes
 
     # Add value to blacklist for a given cell
     def addToBlacklist(self,row,col,val):
