@@ -585,7 +585,7 @@ class solver:
                                 else:
                                     x_wing = []
 
-                if(len(potential_cols) > 1 and x_wing != []):
+                if(len(potential_cols) > 1):
                     # For every potential column, check if there is another potential column that has its cells in the same rows
                     for col in potential_cols.keys():
                         row_vals = sorted([cell[0] for cell in potential_cols.get(col)])
@@ -624,15 +624,141 @@ class solver:
                 print(e)
         return changes
 
+    # Find set_size-fish and blacklist impossible options
+    # A set_size-fish is like an X-Wing, but instead of 2 rows/cols with the value,
+    # there are set_size rows/cols with the value. A set_size of 3 means there are
+    # 3 rows/cols with a value that spans across 3 cols/rows. This means that the
+    # value can be blacklisted in cells that are in the same rows/cols as the fish,
+    # but are not a part of the fish.
+    def fish(self,set_size):
+        changes = 0
+        # For every possible value on the board
+        for val in range(1,self.game.nn):
+            try:
+                self.generateOptions()
+
+                # Get dictionary of each row/col index and each cell that could be in an X-Wing for that row/col
+                rows = dict({})
+                cols = dict({})
+                for cell in self.options.keys():
+                    # Add each cell that has the current value from each row/col
+                    if(val in self.options.get(cell)):
+                        if(cell[0] in rows.keys()):
+                            rows[cell[0]].append(cell)
+                        else:
+                            rows.update({cell[0]:[cell]})
+                        if(cell[1] in cols.keys()):
+                            cols[cell[1]].append(cell)
+                        else:
+                            cols.update({cell[1]:[cell]})
+
+                # Potential fish rows need to have between 2 and set_size cells with the current value
+                potential_rows = dict({})
+                for row in rows.keys():
+                    if(len(rows.get(row)) >= 2 and len(rows.get(row)) <= set_size):
+                        potential_rows.update({row:rows.get(row)})
+
+                # Potential fish cols need to have between 2 and set_size cells with the current value
+                potential_cols = dict({})
+                for col in cols.keys():
+                    if(len(cols.get(col)) >= 2 and len(cols.get(col)) <= set_size):
+                        potential_cols.update({col:cols.get(col)})
+
+
+                fish_cells = []
+                if(len(potential_rows) >= set_size):
+                    # Get all columns included in potential rows
+                    count = 0
+                    while(len(potential_rows) > set_size and count < self.game.nn):
+                        count += 1
+                        cols = dict({})
+                        for row in potential_rows.keys():
+                            for cell in potential_rows.get(row):
+                                if(cell[1] not in cols.keys()):
+                                    cols.update({cell[1]:[cell]})
+                                else:
+                                    cols[cell[1]].append(cell)
+
+                        # Remove rows with columns that appear only once in pattern
+                        for col in cols.keys():
+                            remove_rows = []
+                            if(len(cols.get(col)) == 1):
+                                for row in potential_rows.keys():
+                                    if(cols.get(col)[0][0] == row):
+                                        remove_rows.append(row)
+                                for row in remove_rows:
+                                    potential_rows.pop(row)
+                                    
+                    if(len(potential_rows) == set_size):
+                        print(val,f"Fish {set_size} found!",potential_rows)
+                        row_indices = []
+                        col_indices = []
+                        for row in potential_rows.keys():
+                            for cell in potential_rows.get(row):
+                                fish_cells.append(cell)
+                                if(cell[0] not in row_indices):
+                                    row_indices.append(cell[0])
+                                if(cell[1] not in col_indices):
+                                    col_indices.append(cell[1])
+
+                        for cell in self.options.keys():
+                            if(cell not in fish_cells and (cell[0] in row_indices or cell[1] in col_indices) and val in self.options.get(cell)):
+                                self.addToBlacklist(cell[0],cell[1],val)
+                                changes += 1
+
+                if(len(potential_cols) >= set_size):
+                    # Get all columns included in potential rows
+                    count = 0
+                    while(len(potential_cols) > set_size and count < self.game.nn):
+                        count += 1
+                        rows = dict({})
+                        for col in potential_cols.keys():
+                            for cell in potential_cols.get(col):
+                                if(cell[0] not in rows.keys()):
+                                    rows.update({cell[0]:[cell]})
+                                else:
+                                    rows[cell[0]].append(cell)
+
+                        # Remove rows with columns that appear only once in pattern
+                        for row in rows.keys():
+                            if(len(rows.get(row)) == 1):
+                                remove_cols = []
+                                for col in potential_cols.keys():
+                                    if(rows.get(row)[0][1] == col):
+                                        remove_cols.append(col)
+                                for col in remove_cols:
+                                    potential_cols.pop(col)
+
+                    if(len(potential_cols) == set_size):
+                        print(val,f"Fish {set_size} found!",potential_cols)
+                        for col in potential_cols.keys():
+                            row_indices = []
+                            col_indices = []
+                            for cell in potential_cols.get(col):
+                                fish_cells.append(cell)
+                                if(cell[0] not in row_indices):
+                                    row_indices.append(cell[0])
+                                if(cell[1] not in col_indices):
+                                    col_indices.append(cell[1])
+
+                        for cell in self.options.keys():
+                            if(cell not in fish_cells and (cell[0] in row_indices or cell[1] in col_indices) and val in self.options.get(cell)):
+                                self.addToBlacklist(cell[0],cell[1],val)
+                                changes += 1
+
+            except Exception as e:
+                print(e)
+        return changes
+
     # Add value to blacklist for a given cell
     def addToBlacklist(self,row,col,val):
         if((row,col) in self.blacklistedOptions.keys()):
             if(val not in self.blacklistedOptions.get((row,col))):
                 self.blacklistedOptions[(row,col)].append(val)
-                #print("Blacklisted",row+1,col+1,val)
+                print("Blacklisted",row+1,col+1,val)
         else:
             self.blacklistedOptions.update({(row,col):[val]})
-            #print("Blacklisted",row+1,col+1,val)
+            print("Blacklisted",row+1,col+1,val)
 
     # Generate a legal, solved board
     def generateSolvedBoard(self,sub_size):
@@ -960,6 +1086,10 @@ class solver:
 
             if(changes == 0):
                 changes += self.xWing()
+
+            for i in range(3,self.game.n*2):
+                if(changes == 0):
+                    changes += self.fish(i)
 
             total_changes += changes
 

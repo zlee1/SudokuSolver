@@ -79,7 +79,7 @@ class sudoku:
         # Only make legal moves
         if(self.checkLegalMove(row, col, val)):
             self.board[row][col] = val
-            #print(row+1,col+1,val)
+            print(row+1,col+1,val)
 
     # Find the indices of the current subboard based on row and column
     def getSubboardIndices(self, row, col):
