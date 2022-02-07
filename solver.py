@@ -759,6 +759,77 @@ class solver:
                 print(e)
         return changes
 
+    # Find XY-Wings and blacklist impossible options
+    # XY-Wing explanation: https://sudokusolver.app/xywing.html
+    def xyWing(self):
+        changes = 0
+        self.generateOptions()
+        two_val_cells = []
+        # Get all cells that have only 2 options
+        for cell in self.options.keys():
+            if(len(self.options.get(cell)) == 2):
+                two_val_cells.append(cell)
+
+        for cell in two_val_cells:
+            try:
+                self.generateOptions()
+
+                # Get all cells that have 2 options, are visible from pivot cell,
+                # and share at least 1 value with the pivot cell
+                visible_shared = []
+                for comp in two_val_cells:
+                    if(comp != cell and self.game.canSee(cell[0],cell[1],comp[0],comp[1])):
+                        for val in self.options.get(comp):
+                            if(val in self.options.get(cell)):
+                                visible_shared.append(comp)
+
+                # Get all pairs of wings that are valid XY-Wings
+                valid_wing_pairs = []
+                for wing in visible_shared:
+                    for comp_wing in visible_shared:
+                        # Get all values that show up as options within the set
+                        set_values = []
+                        for val in self.options.get(cell):
+                            set_values.append(val)
+                        for val in self.options.get(wing):
+                            set_values.append(val)
+                        for val in self.options.get(comp_wing):
+                            set_values.append(val)
+
+                        # If every value shows up exactly twice, the set is valid
+                        valid = True
+                        for val in set_values:
+                            count = 0
+                            for comp_val in set_values:
+                                if(val == comp_val):
+                                    count += 1
+                            if(count != 2):
+                                valid = False
+
+                        # Add wings to list of valid pairs
+                        if(valid):
+                            valid_wing_pairs.append([wing,comp_wing])
+
+                # Run for every pair
+                for pair in valid_wing_pairs:
+                    shared_val = 0
+                    # Get the value that is shared by the wings and not the pivot cell
+                    for val in self.options.get(pair[0]):
+                        if(val in self.options.get(pair[1])):
+                            shared_val = val
+
+                    # If there is a shared value, blacklist impossible options
+                    if(shared_val != 0):
+                        for b_cell in self.options.keys():
+                            # If both wings can see a cell that has their shared value as an option, it is impossible
+                            if(b_cell != cell and b_cell not in pair and shared_val in self.options.get(b_cell) and self.game.canSee(pair[0][0], pair[0][1], b_cell[0], b_cell[1]) and self.game.canSee(pair[1][0], pair[1][1], b_cell[0], b_cell[1])):
+                                self.addToBlacklist(b_cell[0],b_cell[1],shared_val)
+                                changes += 1
+                                #print(f"XY-Wing Found! Pivot {cell}, Wings {pair}")
+            except Exception as e:
+                print(e)
+        return changes
+
     # Add value to blacklist for a given cell
     def addToBlacklist(self,row,col,val):
         if((row,col) in self.blacklistedOptions.keys()):
@@ -960,6 +1031,10 @@ class solver:
                         if(changes == 0 and difficulty in difficulties[5:]):
                             changes += self.fish(i)
 
+                    # XY-Wings can only be used in puzzles with difficulties >= very hard
+                    if(changes == 0 and difficulty in difficulties[5:]):
+                        changes += self.xyWing()
+
                 # If the board is not legal and solved, revert back to the last legal board
                 if(not self.game.checkLegalBoard()):
                     board[cell[0],cell[1]] = original_val
@@ -1061,6 +1136,12 @@ class solver:
                     if(changes > 0):
                         very_hard += 1
 
+            # Find XY-Wings
+            if(changes == 0):
+                changes += self.xyWing()
+                if(changes > 0):
+                    very_hard += 1
+
         # Return calculated difficulty
         if(self.game.checkLegalBoard()):
             if(very_hard > 0):
@@ -1122,6 +1203,9 @@ class solver:
             for i in range(3,self.game.n*2):
                 if(changes == 0):
                     changes += self.fish(i)
+
+            if(changes == 0):
+                changes += self.xyWing()
 
             total_changes += changes
 
