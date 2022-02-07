@@ -98,6 +98,14 @@ class sudoku:
                 cmax = (i+1)*self.n
         return rmin,rmax,cmin,cmax
 
+    # Check if a cell is in the same row, column, or subboard of another cell
+    def canSee(self, row_a, col_a, row_b, col_b):
+        rmin,rmax,cmin,cmax = self.getSubboardIndices(row_a, col_a)
+        if(row_a == row_b or col_a == col_b or (row_b in range(rmin,rmax) and col_b in range(cmin,cmax))):
+            return True
+        else:
+            return False
+
     # Allow the user to the game (Mostly exists for testing purposes)
     def playGame(self):
         while True:
