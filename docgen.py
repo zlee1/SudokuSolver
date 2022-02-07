@@ -125,12 +125,12 @@ def docGen(board,difficulty):
     # Create appropriate directories if necessary
     count = 0
     folder_exists = False
-    final_path = f"GeneratedBoards\\Documents\\{nn}x{nn}\\{difficulty.title()}"
+    final_path = f"GeneratedBoards\\Documents\\{nn}x{nn}\\" + difficulty.title().replace("_","")
     for entry in os.listdir("GeneratedBoards\\Documents"):
 
         if(entry == f"{nn}x{nn}"):
             for i in os.listdir(f"GeneratedBoards\\Documents\\{nn}x{nn}"):
-                if(i == difficulty.title()):
+                if(i == difficulty.title().replace("_","")):
                     folder_exists = True
             if(not folder_exists):
                 os.system(f"mkdir {final_path}")
@@ -183,7 +183,7 @@ def docGen(board,difficulty):
     doc += r"{\fontsize{36pt}{36pt}\selectfont "
     if(nn != 9):
         doc += str(nn) + "x" + str(nn) + " "
-    doc += r"SUDOKU} \\ {\fontsize{24pt}{24pt}\selectfont " + difficulty.upper()
+    doc += r"SUDOKU} \\ {\fontsize{24pt}{24pt}\selectfont " + difficulty.upper().replace("_"," ")
 
     # Add bottom text of how to play and what characters to use
     doc += r"} \linespread{1} \mbox{} \vfill {\fontsize{10pt}{10pt}\selectfont EVERY ROW, COLUMN AND HOUSE MUST HAVE EXACTLY ONE OF EACH OF THE FOLLOWING VALUES} \\ {\fontsize{10pt}{10pt}\selectfont "
@@ -205,7 +205,7 @@ def docGen(board,difficulty):
     doc += r"}\end{center} \begin{minipage}[t]{\linewidth}".lstrip()
 
     # Embed PDF
-    doc += r"\includepdf[pages=1,templatesize={4.5in}{4.5in}]{GeneratedBoards/Documents/" + str(nn) + "x" + str(nn) + r"/" + difficulty.title() + r"/" + f"{difficulty}_{nn}_{count}_template.pdf" + r"}\end{minipage} \end{document}"
+    doc += r"\includepdf[pages=1,templatesize={4.5in}{4.5in}]{GeneratedBoards/Documents/" + str(nn) + "x" + str(nn) + r"/" + difficulty.title().replace("_","") + r"/" + f"{difficulty}_{nn}_{count}_template.pdf" + r"}\end{minipage} \end{document}"
 
     # Write LaTeX code to the appropriate .tex file
     with open(f"{final_path}\\{difficulty}_{nn}_{count}.tex", "w+") as f:
@@ -221,5 +221,5 @@ def docGen(board,difficulty):
             p = os.path.join(final_path, entry)
             os.remove(p)
 
-for j in range(3):
-        genPuzzle("hardish",3)
+for j in range(5):
+        genPuzzle("very_hard",3)

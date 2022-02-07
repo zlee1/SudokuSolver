@@ -688,9 +688,10 @@ class solver:
                                         remove_rows.append(row)
                                 for row in remove_rows:
                                     potential_rows.pop(row)
-                                    
+
+                    # If there are exactly set_size potential rows, a fish may have been found
                     if(len(potential_rows) == set_size):
-                        print(val,f"Fish {set_size} found!",potential_rows)
+                        # Get the indices of each row and column in the set
                         row_indices = []
                         col_indices = []
                         for row in potential_rows.keys():
@@ -701,13 +702,17 @@ class solver:
                                 if(cell[1] not in col_indices):
                                     col_indices.append(cell[1])
 
-                        for cell in self.options.keys():
-                            if(cell not in fish_cells and (cell[0] in row_indices or cell[1] in col_indices) and val in self.options.get(cell)):
-                                self.addToBlacklist(cell[0],cell[1],val)
-                                changes += 1
+                        # If there are set_sizes different column and row indices, a fish was found
+                        if(len(col_indices) == set_size and len(row_indices) == set_size):
+                            for cell in self.options.keys():
+                                # Blacklist options that are impossible
+                                if(cell not in fish_cells and (cell[0] in row_indices or cell[1] in col_indices) and val in self.options.get(cell)):
+                                    self.addToBlacklist(cell[0],cell[1],val)
+                                    #print(f"Fish {set_size} at ",val,fish_cells)
+                                    changes += 1
 
                 if(len(potential_cols) >= set_size):
-                    # Get all columns included in potential rows
+                    # Get all rows included in potential columns
                     count = 0
                     while(len(potential_cols) > set_size and count < self.game.nn):
                         count += 1
@@ -719,7 +724,7 @@ class solver:
                                 else:
                                     rows[cell[0]].append(cell)
 
-                        # Remove rows with columns that appear only once in pattern
+                        # Remove columns with rows that appear only once in pattern
                         for row in rows.keys():
                             if(len(rows.get(row)) == 1):
                                 remove_cols = []
@@ -729,8 +734,8 @@ class solver:
                                 for col in remove_cols:
                                     potential_cols.pop(col)
 
+                    # If there are exactly set_size potential columns, a fish may have been found
                     if(len(potential_cols) == set_size):
-                        print(val,f"Fish {set_size} found!",potential_cols)
                         for col in potential_cols.keys():
                             row_indices = []
                             col_indices = []
@@ -741,10 +746,14 @@ class solver:
                                 if(cell[1] not in col_indices):
                                     col_indices.append(cell[1])
 
-                        for cell in self.options.keys():
-                            if(cell not in fish_cells and (cell[0] in row_indices or cell[1] in col_indices) and val in self.options.get(cell)):
-                                self.addToBlacklist(cell[0],cell[1],val)
-                                changes += 1
+                        # If there are set_sizes different column and row indices, a fish was found
+                        if(len(col_indices) == set_size and len(row_indices) == set_size):
+                            for cell in self.options.keys():
+                                # Blacklist options that are impossible
+                                if(cell not in fish_cells and (cell[0] in row_indices or cell[1] in col_indices) and val in self.options.get(cell)):
+                                    self.addToBlacklist(cell[0],cell[1],val)
+                                    #print(f"Fish {set_size} at ",val,fish_cells)
+                                    changes += 1
 
             except Exception as e:
                 print(e)
@@ -755,10 +764,10 @@ class solver:
         if((row,col) in self.blacklistedOptions.keys()):
             if(val not in self.blacklistedOptions.get((row,col))):
                 self.blacklistedOptions[(row,col)].append(val)
-                print("Blacklisted",row+1,col+1,val)
+                #print("Blacklisted",row+1,col+1,val)
         else:
             self.blacklistedOptions.update({(row,col):[val]})
-            print("Blacklisted",row+1,col+1,val)
+            #print("Blacklisted",row+1,col+1,val)
 
     # Generate a legal, solved board
     def generateSolvedBoard(self,sub_size):
@@ -903,8 +912,9 @@ class solver:
 
                 # Check if the puzzle is solvable
                 changes = 1
-                difficulties = ["easy", "easyish", "medium", "hardish", "hard", "any"]
+                difficulties = ["easy", "easyish", "medium", "hardish", "hard", "very_hard", "any"]
                 while(changes != 0):
+                    # Naked singles can be used for all difficulties
                     changes = self.nakedSingle()
 
                     # Hidden singles can only be used in puzzles with difficulties >= easyish
@@ -945,6 +955,11 @@ class solver:
                     if(changes == 0 and difficulty in difficulties[4:]):
                         changes += self.xWing()
 
+                    # Fish patterns (>= 3) can only be used in puzzles with difficulties >= very hard
+                    for i in range(3,self.game.n*2):
+                        if(changes == 0 and difficulty in difficulties[5:]):
+                            changes += self.fish(i)
+
                 # If the board is not legal and solved, revert back to the last legal board
                 if(not self.game.checkLegalBoard()):
                     board[cell[0],cell[1]] = original_val
@@ -956,7 +971,7 @@ class solver:
 
             # Check to ensure that the puzzle difficulty matches requirements
             generated_difficulty = self.rateDifficulty(board)
-            if(difficulty == "any" or generated_difficulty == difficulty):
+            if((difficulty == "any" or generated_difficulty == difficulty) and generated_difficulty != "illegal"):
                 done = True
             else:
                 print(f"Regenerating, difficulty was {generated_difficulty}, but expected was {difficulty}")
@@ -976,6 +991,7 @@ class solver:
         medium = 0
         hardish = 0
         hard = 0
+        very_hard = 0
 
         # Load board, generate options, and clear the blacklist
         self.game.loadBoard(board)
@@ -985,25 +1001,31 @@ class solver:
         # Solve the board and keep track of technique difficulty usage
         changes = 1
         while(changes > 0):
+
+            # Find naked singles
             changes = self.nakedSingle()
             if(changes > 0):
                 easy += 1
 
+            # Find hidden singles
             if(changes == 0):
                 changes += self.hiddenSingle()
                 if(changes > 0):
                     easyish += 1
 
+            # Find naked pairs
             if(changes == 0):
                 changes += self.nakedPair()
                 if(changes > 0):
                     medium += 1
 
+            # Find hidden pairs
             if(changes == 0):
                 changes += self.hiddenPair()
                 if(changes > 0):
                     medium += 1
 
+            # Find pointing pairs
             if(changes == 0):
                 changes += self.pointingPair()
                 if(changes > 0):
@@ -1032,11 +1054,20 @@ class solver:
                 if(changes > 0):
                     hard += 1
 
+            # Find fish patterns
+            for i in range(3,self.game.n*2):
+                if(changes == 0):
+                    changes += self.fish(i)
+                    if(changes > 0):
+                        very_hard += 1
+
         # Return calculated difficulty
         if(self.game.checkLegalBoard()):
-            if(hard > 0):
+            if(very_hard > 0):
+                return "very_hard"
+            elif(hard > 0):
                 return "hard"
-            if(hardish > 0):
+            elif(hardish > 0):
                 return "hardish"
             elif(medium > 0):
                 return "medium"
@@ -1087,6 +1118,7 @@ class solver:
             if(changes == 0):
                 changes += self.xWing()
 
+            # Try all realistic fish patterns for the board size
             for i in range(3,self.game.n*2):
                 if(changes == 0):
                     changes += self.fish(i)
@@ -1095,7 +1127,6 @@ class solver:
 
         # Output board in final state and whether it is solved or not
         print()
-        #self.game.printBoard()
         print(f"Total Changes: {total_changes}")
         if(self.game.checkLegalBoard()):
             print("Solved")
