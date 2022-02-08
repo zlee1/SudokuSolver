@@ -971,7 +971,12 @@ class solver:
                 for j in range(nn):
                     positions.append([i,j])
 
-            for i in range(nn*nn):
+            # To make easy easier, remove <= 50% of values
+            mult = 1
+            if(difficulty == "easy"):
+                mult = .55
+            for i in range(int(nn*nn*mult)):
+
                 # Choose a random cell and set its value to 0
                 cell = random.choice(positions)
                 original_val = board[cell[0],cell[1]]
@@ -1050,6 +1055,20 @@ class solver:
                 done = True
             else:
                 print(f"Regenerating, difficulty was {generated_difficulty}, but expected was {difficulty}")
+
+        # Account for difficulty being any, but producing an easy puzzle by solving a portion of the puzzle before saving
+        if(generated_difficulty == "easy" and difficulty == "any"):
+            full_board = self.game.board
+            zeroes = []
+            for i in range(nn):
+                for j in range(nn):
+                    if(board[i][j] == 0):
+                        zeroes.append([i,j])
+            if(len(zeroes) > int(nn*nn*0.5)):
+                for i in range(random.randint(int(nn*nn*.15),int(nn*nn*.2))):
+                    cell = random.choice(zeroes)
+                    board[cell[0]][cell[1]] = full_board[cell[0]][cell[1]]
+
         print(generated_difficulty)
         self.game.loadBoard(board)
 

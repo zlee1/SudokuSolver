@@ -222,4 +222,4 @@ def docGen(board,difficulty):
             os.remove(p)
 
 for j in range(5):
-        genPuzzle("very_hard",3)
+    genPuzzle("easy",3)
