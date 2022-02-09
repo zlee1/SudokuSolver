@@ -955,8 +955,18 @@ class solver:
         return board
 
     # Generate a legal puzzle with a given difficulty and subboard size
-    def generateBoard(self,sub_size=3,difficulty="any"):
+    # Difficulty values are: -1: any, 0: easy, 1: easyish, 2: medium, 3: hardish, 4: hard, 5:very_hard
+    # Larger puzzle difficulties scale upwards, but values are still the same
+    def generateBoard(self,sub_size=3,difficulty=-1):
         done = False
+        difficulties = ["easy", "easyish", "medium", "hardish", "hard", "very_hard", "very_very_hard", "extreme", "near_impossible", "any"]
+
+        diff_increase = sub_size-3
+        if(diff_increase < 0):
+            diff_increase = 0
+        if(diff_increase > 3):
+            diff_increase = 3
+
         while(not done):
             # Start with a fully solved, shuffled board
             board = self.shuffleSolvedBoard(self.generateSolvedBoard(sub_size))
@@ -973,7 +983,7 @@ class solver:
 
             # To make easy easier, remove <= 50% of values
             mult = 1
-            if(difficulty == "easy"):
+            if(difficulty == 0):
                 mult = .55
             for i in range(int(nn*nn*mult)):
 
@@ -988,56 +998,55 @@ class solver:
 
                 # Check if the puzzle is solvable
                 changes = 1
-                difficulties = ["easy", "easyish", "medium", "hardish", "hard", "very_hard", "any"]
                 while(changes != 0):
                     # Naked singles can be used for all difficulties
                     changes = self.nakedSingle()
 
                     # Hidden singles can only be used in puzzles with difficulties >= easyish
-                    if(changes == 0 and difficulty in difficulties[1:]):
+                    if(changes == 0 and (difficulty >= 1 or difficulty == -1)):
                         changes += self.hiddenSingle()
 
                     # Naked pairs can only be used in puzzles with difficulties >= medium
-                    if(changes == 0 and difficulty in difficulties[2:]):
+                    if(changes == 0 and (difficulty >= 2 or difficulty == -1)):
                         changes += self.nakedPair()
 
                     # Hidden pairs can only be used in puzzles with difficulties >= medium
-                    if(changes == 0 and difficulty in difficulties[2:]):
+                    if(changes == 0 and (difficulty >= 2 or difficulty == -1)):
                         changes += self.hiddenPair()
 
                     # Pointing pairs can only be used in puzzles with difficulties >= medium
-                    if(changes == 0 and difficulty in difficulties[2:]):
+                    if(changes == 0 and (difficulty >= 2 or difficulty == -1)):
                         changes += self.pointingPair()
 
                     # Naked triples can only be used in puzzles with difficulties >= hardish
-                    if(changes == 0 and difficulty in difficulties[3:]):
+                    if(changes == 0 and (difficulty >= 3 or difficulty == -1)):
                         changes += self.nakedSet(3)
 
                     # Naked quads can only be used in puzzles with difficulties >= hardish
-                    if(changes == 0 and difficulty in difficulties[3:]):
+                    if(changes == 0 and (difficulty >= 3 or difficulty == -1)):
                         changes += self.nakedSet(4)
 
                     # Naked quints and higher can only be used in puzzles with difficulties >= hard
                     for i in range(5,self.game.n*2):
-                        if(changes == 0 and difficulty in difficulties[4:]):
+                        if(changes == 0 and (difficulty >= 4 or difficulty == -1)):
                             changes += self.nakedSet(i)
 
                     # Hidden sets can only be used in puzzles with difficulties >= hard
                     for i in range(3,self.game.n*2):
-                        if(changes == 0 and difficulty in difficulties[4:]):
+                        if(changes == 0 and (difficulty >= 4 or difficulty == -1)):
                             changes += self.hiddenSet(i)
 
                     # X-Wings can only be used in puzzles with difficulties >= hard
-                    if(changes == 0 and difficulty in difficulties[4:]):
+                    if(changes == 0 and (difficulty >= 4 or difficulty == -1)):
                         changes += self.xWing()
 
                     # Fish patterns (>= 3) can only be used in puzzles with difficulties >= very hard
                     for i in range(3,self.game.n*2):
-                        if(changes == 0 and difficulty in difficulties[5:]):
+                        if(changes == 0 and (difficulty >= 5 or difficulty == -1)):
                             changes += self.fish(i)
 
                     # XY-Wings can only be used in puzzles with difficulties >= very hard
-                    if(changes == 0 and difficulty in difficulties[5:]):
+                    if(changes == 0 and (difficulty >= 5 or difficulty == -1)):
                         changes += self.xyWing()
 
                 # If the board is not legal and solved, revert back to the last legal board
@@ -1051,13 +1060,14 @@ class solver:
 
             # Check to ensure that the puzzle difficulty matches requirements
             generated_difficulty = self.rateDifficulty(board)
-            if((difficulty == "any" or generated_difficulty == difficulty) and generated_difficulty != "illegal"):
+            if((difficulty == -1 or generated_difficulty == difficulty) and generated_difficulty != -1):
                 done = True
             else:
                 print(f"Regenerating, difficulty was {generated_difficulty}, but expected was {difficulty}")
 
         # Account for difficulty being any, but producing an easy puzzle by solving a portion of the puzzle before saving
-        if(generated_difficulty == "easy" and difficulty == "any"):
+        if(generated_difficulty == 0 and difficulty == -1):
+            print("Restoring values")
             full_board = self.game.board
             zeroes = []
             for i in range(nn):
@@ -1073,13 +1083,24 @@ class solver:
         self.game.loadBoard(board)
 
         # Write the board to a file based on difficulty and subboard size
-        with open(f'GeneratedBoards\\{generated_difficulty}_{sub_size}.txt', 'a') as f:
+        with open(f'GeneratedBoards\\{self.getDifficultyString(sub_size,generated_difficulty)}_{sub_size}.txt', 'a') as f:
             f.write(self.game.getSaveString())
         return board
+
+    def getDifficultyString(self, sub_size=3, difficulty_int=0):
+        if(sub_size <= 3):
+            diff_increase = 0
+        elif(sub_size > 7):
+            diff_increase = 4
+        else:
+            diff_increase = sub_size-3
+
+        return ["easy", "easyish", "medium", "hardish", "hard", "very_hard", "very_very_hard", "harder_than_hard", "extremely_hard", "nearly_impossible"][difficulty_int+diff_increase]
 
     # Rate a puzzle's difficulty
     def rateDifficulty(self,board):
         # Keep track of the number of times a technique of each difficulty is used
+        difficulty_values = [0]*6
         easy = 0
         easyish = 0
         medium = 0
@@ -1099,31 +1120,31 @@ class solver:
             # Find naked singles
             changes = self.nakedSingle()
             if(changes > 0):
-                easy += 1
+                difficulty_values[0] += 1
 
             # Find hidden singles
             if(changes == 0):
                 changes += self.hiddenSingle()
                 if(changes > 0):
-                    easyish += 1
+                    difficulty_values[1] += 1
 
             # Find naked pairs
             if(changes == 0):
                 changes += self.nakedPair()
                 if(changes > 0):
-                    medium += 1
+                    difficulty_values[2] += 1
 
             # Find hidden pairs
             if(changes == 0):
                 changes += self.hiddenPair()
                 if(changes > 0):
-                    medium += 1
+                    difficulty_values[2] += 1
 
             # Find pointing pairs
             if(changes == 0):
                 changes += self.pointingPair()
                 if(changes > 0):
-                    medium += 1
+                    difficulty_values[2] += 1
 
             # Find naked sets up to 2*subboard size
             for i in range(3,self.game.n*2):
@@ -1131,52 +1152,47 @@ class solver:
                     changes += self.nakedSet(i)
                     if(changes > 0):
                         if(i > 4):
-                            hard += 1
+                            difficulty_values[4] += 1
                         else:
-                            hardish += 1
+                            difficulty_values[3] += 1
 
             # Find hidden sets up to 2*subboard size
             for i in range(3,self.game.n*2):
                 if(changes == 0):
                     changes += self.hiddenSet(i)
                     if(changes > 0):
-                        hard += 1
+                        difficulty_values[4] += 1
 
             # Find X-Wings
             if(changes == 0):
                 changes += self.xWing()
                 if(changes > 0):
-                    hard += 1
+                    difficulty_values[4] += 1
 
             # Find fish patterns
             for i in range(3,self.game.n*2):
                 if(changes == 0):
                     changes += self.fish(i)
                     if(changes > 0):
-                        very_hard += 1
+                        difficulty_values[5] += 1
 
             # Find XY-Wings
             if(changes == 0):
                 changes += self.xyWing()
                 if(changes > 0):
-                    very_hard += 1
+                    difficulty_values[5] += 1
+
+        print(difficulty_values)
+        max_non_zero = 0
+        for i in range(len(difficulty_values)):
+            if(difficulty_values[i] > 0):
+                max_non_zero = i
 
         # Return calculated difficulty
         if(self.game.checkLegalBoard()):
-            if(very_hard > 0):
-                return "very_hard"
-            elif(hard > 0):
-                return "hard"
-            elif(hardish > 0):
-                return "hardish"
-            elif(medium > 0):
-                return "medium"
-            elif(easyish > 0):
-                return "easyish"
-            elif(easy > 0):
-                return "easy"
+            return max_non_zero
         else:
-            return "illegal"
+            return -1
 
     # Generate multiple boards
     def generateNBoards(self,n,sub_size=3,difficulty="any"):
