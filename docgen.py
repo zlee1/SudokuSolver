@@ -221,5 +221,6 @@ def docGen(board,difficulty):
             p = os.path.join(final_path, entry)
             os.remove(p)
 
-for j in range(5):
-    genPuzzle("easy",3)
+if __name__ == '__main__':
+    for j in range(5):
+        genPuzzle("very_very_hard",4)

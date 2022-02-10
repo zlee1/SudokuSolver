@@ -830,6 +830,98 @@ class solver:
                 print(e)
         return changes
 
+    # Find XYZ-Wings and blacklist impossible options
+    def xyzWing(self):
+        changes = 0
+        self.generateOptions()
+        three_val_cells = []
+        two_val_cells = []
+
+        for cell in self.options.keys():
+            if(len(self.options.get(cell)) == 3):
+                three_val_cells.append(cell)
+
+        if(len(three_val_cells) < 1):
+            return changes
+
+        # Get all cells that have only 2 options
+        for cell in self.options.keys():
+            if(len(self.options.get(cell)) == 2):
+                two_val_cells.append(cell)
+
+        if(len(two_val_cells) < 2):
+            return changes
+
+        for cell in three_val_cells:
+            try:
+                self.generateOptions()
+
+                # Get all cells that have 2 options, are visible from pivot cell,
+                # and share both values with the pivot cell
+                visible_shared = []
+                for comp in two_val_cells:
+                    if(comp != cell and self.game.canSee(cell[0],cell[1],comp[0],comp[1])):
+                        n_shared = 0
+                        for val in self.options.get(comp):
+
+                            if(val in self.options.get(cell)):
+                                n_shared += 1
+                            if(n_shared == 2):
+                                visible_shared.append(comp)
+
+                # Get all pairs of wings that are valid XY-Wings
+                valid_wing_pairs = []
+                for wing in visible_shared:
+                    for comp_wing in visible_shared:
+                        # Get all values that show up as options within the set
+                        set_values = []
+                        for val in self.options.get(cell):
+                            set_values.append(val)
+                        for val in self.options.get(wing):
+                            set_values.append(val)
+                        for val in self.options.get(comp_wing):
+                            set_values.append(val)
+
+                        # If every value shows up >= 2 times, and one value shows up three times, the set is valid
+                        valid = True
+                        for val in set_values:
+                            count = 0
+                            for comp_val in set_values:
+                                if(val == comp_val):
+                                    count += 1
+                            if(count not in [2,3]):
+                                valid = False
+                        # Add wings to list of valid pairs
+                        if(valid):
+                            valid_wing_pairs.append([wing,comp_wing])
+
+                # Run for every pair
+                for pair in valid_wing_pairs:
+                    shared_val = 0
+                    n_shared = 0
+                    # Get the value that is shared by all three cells
+                    for val in self.options.get(pair[0]):
+                        if(val in self.options.get(pair[1]) and val in self.options.get(cell)):
+                            shared_val = val
+                            n_shared += 1
+
+                    if(n_shared > 1):
+                        shared_val = 0
+                        print(n_shared)
+
+                    # If there is a shared value, blacklist impossible options
+                    if(shared_val != 0):
+                        for b_cell in self.options.keys():
+                            # If all cells can see a cell that has their shared value as an option, it is impossible
+                            if(b_cell != cell and b_cell not in pair and shared_val in self.options.get(b_cell) and self.game.canSee(pair[0][0], pair[0][1], b_cell[0], b_cell[1]) and self.game.canSee(pair[1][0], pair[1][1], b_cell[0], b_cell[1]) and self.game.canSee(cell[0],cell[1],b_cell[0],b_cell[1])):
+                                print(f"XYZ-Wing Found! Pivot {cell}, Wings {pair}, Value {shared_val}")
+
+                                self.addToBlacklist(b_cell[0],b_cell[1],shared_val)
+                                changes += 1
+            except Exception as e:
+                print(e)
+        return changes
+
     # Add value to blacklist for a given cell
     def addToBlacklist(self,row,col,val):
         if((row,col) in self.blacklistedOptions.keys()):
@@ -959,13 +1051,6 @@ class solver:
     # Larger puzzle difficulties scale upwards, but values are still the same
     def generateBoard(self,sub_size=3,difficulty=-1):
         done = False
-        difficulties = ["easy", "easyish", "medium", "hardish", "hard", "very_hard", "very_very_hard", "extreme", "near_impossible", "any"]
-
-        diff_increase = sub_size-3
-        if(diff_increase < 0):
-            diff_increase = 0
-        if(diff_increase > 3):
-            diff_increase = 3
 
         while(not done):
             # Start with a fully solved, shuffled board
@@ -1241,6 +1326,9 @@ class solver:
 
             if(changes == 0):
                 changes += self.xyWing()
+
+            if(changes == 0):
+                changes += self.xyzWing()
 
             total_changes += changes
 
