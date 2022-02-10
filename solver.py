@@ -1134,6 +1134,10 @@ class solver:
                     if(changes == 0 and (difficulty >= 5 or difficulty == -1)):
                         changes += self.xyWing()
 
+                    # XYZ-Wings can only be used in puzzles with difficulties >= very hard
+                    if(changes == 0 and (difficulty >= 5 or difficulty == -1)):
+                        changes += self.xyzWing()
+
                 # If the board is not legal and solved, revert back to the last legal board
                 if(not self.game.checkLegalBoard()):
                     board[cell[0],cell[1]] = original_val
@@ -1264,6 +1268,12 @@ class solver:
             # Find XY-Wings
             if(changes == 0):
                 changes += self.xyWing()
+                if(changes > 0):
+                    difficulty_values[5] += 1
+
+            # Find XYZ-Wings
+            if(changes == 0):
+                changes += self.xyzWing()
                 if(changes > 0):
                     difficulty_values[5] += 1
 
