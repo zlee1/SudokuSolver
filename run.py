@@ -2,6 +2,8 @@ from sudoku import sudoku
 from solver import solver
 import math, random
 from multiprocessing import Process
+from datetime import datetime
+import time
 
 # Generate nboards on nprocesses using multiprocessing
 def multiprocessingGeneration(nprocesses,nboards,sub_size=3,difficulty="any"):
@@ -11,8 +13,7 @@ def multiprocessingGeneration(nprocesses,nboards,sub_size=3,difficulty="any"):
         p.start()
 
 if __name__ == '__main__':
-    #multiprocessingGeneration(8,10,4,-1)
-
+    #multiprocessingGeneration(8,10,3,-1)
 
     s = solver(sudoku(3))
 

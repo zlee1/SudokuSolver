@@ -1,8 +1,9 @@
 from sudoku import sudoku
 import numpy as np
-import datetime
+from datetime import datetime
 import random
 import math
+import traceback
 
 class solver:
 
@@ -67,6 +68,55 @@ class solver:
                         break
             except Exception as e:
                 print(e)
+        return changes
+
+    # New, faster method for hidden singles
+    def hiddenSingleFast(self):
+        changes = 0
+        self.generateOptions()
+
+        # Get the cells in each row, col, and subboard
+        rows = dict({})
+        cols = dict({})
+        subs = dict({})
+        for i in self.options.keys():
+            if(i[0] in rows.keys()):
+                rows[i[0]].append(i)
+            else:
+                rows.update({i[0]:[i]})
+
+            if(i[1] in cols.keys()):
+                cols[i[1]].append(i)
+            else:
+                cols.update({i[1]:[i]})
+
+            rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0],i[1])
+            tup = (rmin,rmax,cmin,cmax)
+
+            if(tup in subs.keys()):
+                subs[tup].append(i)
+            else:
+                subs.update({tup:[i]})
+
+        # For each row, column, and subboard
+        for house in [rows,cols,subs]:
+            for h in list(house.values()):
+                # Get all values and the cells they appear in
+                values = dict({})
+                for cell in h:
+                    try:
+                        for val in self.options.get(cell):
+                            if(val in values.keys()):
+                                values[val].append(cell)
+                            else:
+                                values.update({val:[cell]})
+                    except Exception as e:
+                        traceback.print_exc()
+                # If there is only one cell with a value as an option, make the move
+                for val in values.keys():
+                    if(len(values.get(val)) == 1):
+                        self.game.makeMove(values.get(val)[0][0],values.get(val)[0][1], val)
+                        changes += 1
         return changes
 
     # Blacklist values when a naked pair is present
@@ -831,27 +881,32 @@ class solver:
         return changes
 
     # Find XYZ-Wings and blacklist impossible options
+    # XYZ-Wing explanation: https://www.sudokuwiki.org/XYZ_Wing
     def xyzWing(self):
         changes = 0
         self.generateOptions()
         three_val_cells = []
         two_val_cells = []
 
+        # Get all cells that have exactly 3 options
         for cell in self.options.keys():
             if(len(self.options.get(cell)) == 3):
                 three_val_cells.append(cell)
 
+        # If there are none, an XYZ-Wing is not possible
         if(len(three_val_cells) < 1):
             return changes
 
-        # Get all cells that have only 2 options
+        # Get all cells that have exactly 2 options
         for cell in self.options.keys():
             if(len(self.options.get(cell)) == 2):
                 two_val_cells.append(cell)
 
+        # If there are less than 2, an XYZ-Wing is not possible
         if(len(two_val_cells) < 2):
             return changes
 
+        # Pivot cell must have 3 options
         for cell in three_val_cells:
             try:
                 self.generateOptions()
@@ -863,7 +918,6 @@ class solver:
                     if(comp != cell and self.game.canSee(cell[0],cell[1],comp[0],comp[1])):
                         n_shared = 0
                         for val in self.options.get(comp):
-
                             if(val in self.options.get(cell)):
                                 n_shared += 1
                             if(n_shared == 2):
@@ -882,7 +936,7 @@ class solver:
                         for val in self.options.get(comp_wing):
                             set_values.append(val)
 
-                        # If every value shows up >= 2 times, and one value shows up three times, the set is valid
+                        # If every value shows up 2 or 3 times, a valid XYZ-Wing was found
                         valid = True
                         for val in set_values:
                             count = 0
@@ -895,7 +949,7 @@ class solver:
                         if(valid):
                             valid_wing_pairs.append([wing,comp_wing])
 
-                # Run for every pair
+                # Run for every potential wing pair
                 for pair in valid_wing_pairs:
                     shared_val = 0
                     n_shared = 0
@@ -905,16 +959,16 @@ class solver:
                             shared_val = val
                             n_shared += 1
 
+                    # There should be only one value shared by all 3 cells
                     if(n_shared > 1):
                         shared_val = 0
-                        print(n_shared)
 
                     # If there is a shared value, blacklist impossible options
                     if(shared_val != 0):
                         for b_cell in self.options.keys():
                             # If all cells can see a cell that has their shared value as an option, it is impossible
                             if(b_cell != cell and b_cell not in pair and shared_val in self.options.get(b_cell) and self.game.canSee(pair[0][0], pair[0][1], b_cell[0], b_cell[1]) and self.game.canSee(pair[1][0], pair[1][1], b_cell[0], b_cell[1]) and self.game.canSee(cell[0],cell[1],b_cell[0],b_cell[1])):
-                                print(f"XYZ-Wing Found! Pivot {cell}, Wings {pair}, Value {shared_val}")
+                                #print(f"XYZ-Wing Found! Pivot {cell}, Wings {pair}, Value {shared_val}")
 
                                 self.addToBlacklist(b_cell[0],b_cell[1],shared_val)
                                 changes += 1
@@ -1084,6 +1138,7 @@ class solver:
                 # Check if the puzzle is solvable
                 changes = 1
                 while(changes != 0):
+
                     # Naked singles can be used for all difficulties
                     changes = self.nakedSingle()
 
@@ -1296,16 +1351,18 @@ class solver:
 
     # Run solver
     def solve(self):
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         total_changes = 0
         changes = 1
+        self.blacklistedOptions = dict({})
+        self.generateOptions()
         while(not self.game.checkLegalBoard() and changes != 0): # Continue until board is complete and correct or no changes have been made
 
             changes = self.nakedSingle()
 
             # SLower processes should only be done if no other things can happen
             if(changes == 0):
-                changes += self.hiddenSingle()
+                changes += self.hiddenSingleFast()
 
             if(changes == 0):
                 changes += self.nakedPair()
@@ -1347,6 +1404,6 @@ class solver:
         print(f"Total Changes: {total_changes}")
         if(self.game.checkLegalBoard()):
             print("Solved")
-            print("Time to solve:",datetime.datetime.now()-start_time) # Show time to complete puzzle
+            print("Time to solve:",datetime.now()-start_time) # Show time to complete puzzle
         else:
             print("Unsolved")
