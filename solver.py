@@ -15,17 +15,33 @@ class solver:
 
     # Generate all possible options for each cell
     def generateOptions(self):
-        self.options = {} # Clear previous options
-        for row in range(self.game.nn):
-            for col in range(self.game.nn):
-                for val in range(1,self.game.nn+1):
-                    if(self.game.checkLegalMove(row,col,val)):
-                        if(((row,col) in self.blacklistedOptions.keys() and val not in self.blacklistedOptions.get((row,col))) or (row,col) not in self.blacklistedOptions.keys()):
-                            # Add option to dictionary if it is not blacklisted
-                            if((row,col) in self.options.keys()):
-                                self.options[(row,col)].append(val)
-                            else:
-                                self.options.update({(row,col):[val]})
+        #self.options = {} # Clear previous options
+        if(self.options == {}):
+            for row in range(self.game.nn):
+                for col in range(self.game.nn):
+                    for val in range(1,self.game.nn+1):
+                        if(self.game.checkLegalMove(row,col,val)):
+                            if(((row,col) in self.blacklistedOptions.keys() and val not in self.blacklistedOptions.get((row,col))) or (row,col) not in self.blacklistedOptions.keys()):
+                                # Add option to dictionary if it is not blacklisted
+                                if((row,col) in self.options.keys()):
+                                    self.options[(row,col)].append(val)
+                                else:
+                                    self.options.update({(row,col):[val]})
+        # Faster than erasing and remaking the options dict each time
+        else:
+            # Cells to be removed from dictionary
+            delete_cells = []
+            for cell in self.options.keys():
+                # Remove keys that have empty lists for values
+                if(self.options.get(cell) == []):
+                    delete_cells.append(cell)
+                else:
+                    # Remove values that are blacklisted or otherwise impossible
+                    for val in self.options.get(cell):
+                        if(not self.game.checkLegalMove(cell[0],cell[1],val) or (cell in self.blacklistedOptions.keys() and val in self.blacklistedOptions.get(cell))):
+                            self.options.get(cell).remove(val)
+            for cell in delete_cells:
+                del self.options[cell]
 
     # Fill in all naked singles
     # Naked single is when there is only one possible move for a cell
@@ -41,37 +57,6 @@ class solver:
     # Fill in all hidden singles
     # Hidden single is when there is only one instance of a value in a given row, column, or subboard
     def hiddenSingle(self):
-        changes = 0
-        self.generateOptions()
-        for i in self.options.keys():
-            try:
-                rmin,rmax,cmin,cmax = self.game.getSubboardIndices(i[0], i[1])
-                self.generateOptions()
-                for val in self.options.get(i):
-                    ronly = True # If value is the only one in the row
-                    conly = True # If value is the only one in the column
-                    sonly = True # If value is the only one in the subboard
-                    for j in self.options.keys():
-                        if(j != i):
-                            if(j[0] == i[0]): # True if values are in the same row
-                                if(val in self.options.get(j)):
-                                    ronly = False
-                            if(j[1] == i[1]): # True if values are in the same column
-                                if(val in self.options.get(j)):
-                                    conly = False
-                            if(j[0] in range(rmin,rmax) and j[1] in range(cmin,cmax)): # True if values are in the same subboard
-                                if(val in self.options.get(j)):
-                                    sonly = False
-                    if(ronly or conly or sonly): # Make move only if the value is the only one in the row, column, or subboard
-                        self.game.makeMove(i[0], i[1], val)
-                        changes += 1
-                        break
-            except Exception as e:
-                print(e)
-        return changes
-
-    # New, faster method for hidden singles
-    def hiddenSingleFast(self):
         changes = 0
         self.generateOptions()
 
@@ -126,8 +111,8 @@ class solver:
     def nakedPair(self):
         changes = 0
         checked_pairs = [] # Ignore checked pairs to speed up process || To be implemented
+        self.generateOptions()
         for i in self.options.keys():
-            self.generateOptions()
             try:
                 # Continue if there are only 2 options for this cell
                 if(i in self.options.keys() and len(self.options.get(i)) == 2):
@@ -1355,6 +1340,7 @@ class solver:
         total_changes = 0
         changes = 1
         self.blacklistedOptions = dict({})
+        self.options = dict({})
         self.generateOptions()
         while(not self.game.checkLegalBoard() and changes != 0): # Continue until board is complete and correct or no changes have been made
 
@@ -1362,7 +1348,7 @@ class solver:
 
             # SLower processes should only be done if no other things can happen
             if(changes == 0):
-                changes += self.hiddenSingleFast()
+                changes += self.hiddenSingle()
 
             if(changes == 0):
                 changes += self.nakedPair()
