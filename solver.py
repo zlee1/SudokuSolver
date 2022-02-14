@@ -171,9 +171,10 @@ class solver:
     def hiddenPair(self):
         changes = 0
         checked_sections = [] # Ignore checked sections to speed up process || To be implemented
+        self.generateOptions()
         for i in self.options.keys():
             try:
-                self.generateOptions()
+
                 # Row handling
                 pairs = dict({})
                 for j in self.options.keys():
@@ -246,9 +247,10 @@ class solver:
     # subboard and can be eliminated from other cells in the row or column
     def pointingPair(self):
         changes = 0
+        self.generateOptions()
         for i in self.options.keys():
             try:
-                self.generateOptions()
+
 
                 # Row handling
                 pairs = dict({})
@@ -361,9 +363,10 @@ class solver:
     # of those values in the same container can be removed from possible options
     def nakedSet(self, set_size):
         changes = 0
+        self.generateOptions()
         for i in self.options.keys():
             try:
-                self.generateOptions()
+
                 # Make lists containing cells of the row, colum, and subboard of the current cell
                 row = []
                 col = []
@@ -467,9 +470,10 @@ class solver:
     # values in those cells can be removed
     def hiddenSet(self, set_size):
         changes = 0
+        self.generateOptions()
         for i in self.options.keys():
             try:
-                self.generateOptions()
+
                 # Make lists containing cells of the row, colum, and subboard of the current cell
                 row = []
                 col = []
@@ -552,9 +556,10 @@ class solver:
     def xWing(self):
         changes = 0
         # For every possible value on the board
+        self.generateOptions()
         for val in range(1,self.game.nn):
             try:
-                self.generateOptions()
+
 
                 # Get dictionary of each row/col index and each cell that could be in an X-Wing for that row/col
                 rows = dict({})
@@ -668,9 +673,10 @@ class solver:
     def fish(self,set_size):
         changes = 0
         # For every possible value on the board
+        self.generateOptions()
         for val in range(1,self.game.nn):
             try:
-                self.generateOptions()
+
 
                 # Get dictionary of each row/col index and each cell that could be in an X-Wing for that row/col
                 rows = dict({})
@@ -807,7 +813,6 @@ class solver:
 
         for cell in two_val_cells:
             try:
-                self.generateOptions()
 
                 # Get all cells that have 2 options, are visible from pivot cell,
                 # and share at least 1 value with the pivot cell
@@ -894,7 +899,6 @@ class solver:
         # Pivot cell must have 3 options
         for cell in three_val_cells:
             try:
-                self.generateOptions()
 
                 # Get all cells that have 2 options, are visible from pivot cell,
                 # and share both values with the pivot cell
@@ -1089,6 +1093,7 @@ class solver:
     # Difficulty values are: -1: any, 0: easy, 1: easyish, 2: medium, 3: hardish, 4: hard, 5:very_hard
     # Larger puzzle difficulties scale upwards, but values are still the same
     def generateBoard(self,sub_size=3,difficulty=-1):
+        start = datetime.now()
         done = False
 
         while(not done):
@@ -1105,10 +1110,16 @@ class solver:
                 for j in range(nn):
                     positions.append([i,j])
 
-            # To make easy easier, remove <= 50% of values
             mult = 1
+            # Remove a percentage of cells at random in the beginning to cut down on runtime
+            for i in range(int(nn*nn*(1-mult))):
+                cell = random.choice(positions)
+                board[cell[0],cell[1]] = 0
+                positions.remove(cell)
+
+            # To make easy easier, remove <= 50% of values
             if(difficulty == 0):
-                mult = .55
+                mult = .55-(1-mult)
             for i in range(int(nn*nn*mult)):
 
                 # Choose a random cell and set its value to 0
@@ -1119,6 +1130,8 @@ class solver:
                 # Load the board in its current state and clear blacklist dictionary
                 self.game.loadBoard(board)
                 self.blacklistedOptions = dict({})
+                self.options = dict({})
+                self.generateOptions()
 
                 # Check if the puzzle is solvable
                 changes = 1
@@ -1208,7 +1221,7 @@ class solver:
                     cell = random.choice(zeroes)
                     board[cell[0]][cell[1]] = full_board[cell[0]][cell[1]]
 
-        print(generated_difficulty)
+        print(generated_difficulty, f"Elapsed Time: {datetime.now()-start}")
         self.game.loadBoard(board)
 
         # Write the board to a file based on difficulty and subboard size
@@ -1239,6 +1252,7 @@ class solver:
 
         # Load board, generate options, and clear the blacklist
         self.game.loadBoard(board)
+        self.options = dict({})
         self.generateOptions()
         self.blacklistedOptions = dict({})
 
