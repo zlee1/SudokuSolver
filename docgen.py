@@ -212,15 +212,15 @@ def docGen(board,difficulty):
         f.write(doc)
 
     # Generate and output the PDF
-    #os.system(f"pdflatex -output-directory={final_path} {final_path}\\{difficulty}_{nn}_{count}.tex")
+    os.system(f"pdflatex -output-directory={final_path} {final_path}\\{difficulty}_{nn}_{count}.tex")
 
     # Clean up output so that only PDF remains
-    """path = os.listdir(final_path)
+    path = os.listdir(final_path)
     for entry in path:
         if(not entry.endswith(".pdf") or entry.endswith("template.pdf")):
             p = os.path.join(final_path, entry)
-            os.remove(p)"""
+            os.remove(p)
 
 if __name__ == '__main__':
     for j in range(1):
-        genPuzzle("very_hard",8)
+        genPuzzle("very_very_hard",5)
