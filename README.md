@@ -8,12 +8,12 @@ The file "docgen.py" utilizes LaTeX to produce PDFs of boards. Specifying a diff
 
 Sudoku board generation is available in the "run.py" file, and allows utilization of multiprocessing to generate large quantities of sudoku boards as fast as possible. Providing a difficulty will restrict the techniques that can be used for the puzzle and will not allow the generator to return a puzzle that does not match the specified difficulty. It is recommended to set the difficulty to "-1", which means that any difficulty is accepted unless you are specifically wanting an easy puzzle. Generation time will be faster for lower difficulties because it take less computing time on complicated techniques, but also is more likely to produce a puzzle that meets requirements. Puzzle difficulties can be between -1 and 5 inclusively and will be saved as the appropriate text file. Since difficulty changes based on board size as well as technique, the text version of the difficulty will be different for each board. A difficulty of 0 on a 9x9 board corresponds to an "easy" difficulty, but a difficulty of 0 on a 16x16 board corresponds to an "easyish" difficulty. The full difficulty layout is as follows:
 
-  4x4: easy (it is not possible to produce harder puzzles that follow rules of sudoku)
-  9x9: easy, easyish, medium, hardish, hard, very hard
-  16x16: easyish, medium, hardish, hard, very hard, very very hard
-  25x25: medium, hardish, hard, very hard, very very hard, harder than hard
-  36x36: hardish, hard, very hard, very very hard, harder than hard, extremely hard
-  49x49: hard, very hard, very very hard, harder than hard, extremely hard, near-impossible
+  * 4x4: easy (it is not possible to produce harder puzzles that follow rules of sudoku)
+  * 9x9: easy, easyish, medium, hardish, hard, very hard
+  * 16x16: easyish, medium, hardish, hard, very hard, very very hard
+  * 25x25: medium, hardish, hard, very hard, very very hard, harder than hard
+  * 36x36: hardish, hard, very hard, very very hard, harder than hard, extremely hard
+  * 49x49: hard, very hard, very very hard, harder than hard, extremely hard, near-impossible
 
 Board generation for dimensions higher than 49x49 is not recommended, as the LaTeX code does not handle it well, and the difficulties do not extend past "near-impossible".
 
