@@ -14,7 +14,7 @@ def multiprocessingGeneration(nprocesses,nboards,sub_size=3,difficulty="any"):
         p.start()
 
 if __name__ == '__main__':
-    multiprocessingGeneration(8,10,4,0)
+    multiprocessingGeneration(8,10,2,-1)
 
     """
     s = solver(sudoku(3))

@@ -1118,7 +1118,7 @@ class solver:
                 positions.remove(cell)
 
             # To make easy easier, remove <= 50% of values
-            if(difficulty == 0):
+            if(difficulty == 0 and sub_size != 2):
                 mult = .55-(1-mult)
             for i in range(int(nn*nn*mult)):
 
@@ -1208,7 +1208,7 @@ class solver:
                 print(f"Regenerating, difficulty was {generated_difficulty}, but expected was {difficulty}")
 
         # Account for difficulty being any, but producing an easy puzzle by solving a portion of the puzzle before saving
-        if(generated_difficulty == 0 and difficulty == -1):
+        if(generated_difficulty == 0 and difficulty == -1 and sub_size != 2):
             print("Restoring values")
             full_board = self.game.board
             zeroes = []
