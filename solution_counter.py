@@ -2,11 +2,14 @@ import math
 import numpy as np
 from sudoku import sudoku
 
+# This will check if a board has multiple solutions
 class counter:
-
+    # Take a board as input and store it for evaluation
     def __init__(self,board):
         self.nn = len(board)
         self.n = math.sqrt(self.nn)
+
+        # If the board is loaded as a save string, turn it into a numpy array
         if(type(board) == type("")):
             str_board = board
             split = str_board.split(",")
@@ -20,12 +23,12 @@ class counter:
                 # Append each row as its own list
                 board.append(split[i*self.nn:(i+1)*self.nn])
             board = np.array(board)
+
         self.original_board = board
         self.options = dict({})
 
     # Generate all possible options for each cell
     def generateOptions(self, board, options = dict({})):
-        #options = dict({})
         if(options == {}):
             for row in range(len(board)):
                 for col in range(len(board)):
@@ -51,6 +54,7 @@ class counter:
                 del options[cell]
         return options
 
+    # Check that the board is complete and legal
     def checkLegalBoard(self,board):
         for i in range(self.nn):
             # Check if the current row and column has all necessary values
@@ -67,24 +71,19 @@ class counter:
     def checkLegalMove(self, board, row, col, val):
         # Value is outside of the legal range
         if(val not in range(1, self.nn+1)):
-            #print("Illegal value")
             return False
         # A value already exists in this cell
         elif(board[row][col] != 0):
-            #print("Space already filled")
             return False
         # The value already exists in this row
         elif(val in board[row]):
-            #print("Value already in row")
             return False
         # The value already exists in this column
         elif(val in np.rot90(board, 3)[col]):
-            #print("Value already in column")
             return False
         rmin, rmax, cmin, cmax = self.getSubboardIndices(row,col)
         # The value already exists in this subboard
         if(val in board[rmin:rmax, cmin:cmax].flatten()):
-            #print("Value already in subboard")
             return False
         return True
 
@@ -105,44 +104,67 @@ class counter:
                 cmax = (i+1)*self.n
         return rmin,rmax,cmin,cmax
 
+    # Check if the board is fully populated
     def checkFullBoard(self,board):
         for i in range(self.nn):
             for j in range(self.nn):
+                # If there is an empty cell, the board is not fully populated
                 if(board[i][j] == 0):
                     return False
         return True
 
+    # Check if there are multiple solutions for the provided board
+    # This is done by recursively solving the board with different attempts at
+    # legal values for each empty cell.
     def countSolutions(self,board_instance):
         board = board_instance.copy()
-        #game = sudoku(self.n)
-        #game.loadBoard(board)
+
         n_solutions = 0
         options = dict({})
         while 1:
+            # If there are multiple solutions, return the number. It does not matter
+            # how many solutions there actually are because >1 means the board is
+            # illegal
             if(n_solutions > 1):
                 return n_solutions
 
             min_cell = None
+            # Generate all possible options
             options = self.generateOptions(board, options)
 
+            # If the board is full, a solution was found. Since only legal moves
+            # can be made, a full board means a solved board.
             if(self.checkFullBoard(board)):
                 return n_solutions + 1
 
+            # If there are no possible moves and the board is not full, return the
+            # current number of solutions
             if(len(options.keys()) == 0):
                 return n_solutions
+
             for cell in options.keys():
+                # If there are cells with only one possible option, make the move
                 if(len(options.get(cell)) == 1 and self.checkLegalMove(board,cell[0],cell[1],options.get(cell)[0])):
                     board[cell[0],cell[1]] = options.get(cell)[0]
+                # If the cell has fewer possible options than the current min_cell,
+                # it is the new min_cell
                 elif(min_cell == None or len(options.get(cell)) < len(options.get(min_cell))):
                     min_cell = cell
+
+            # Check if the board is full again because of filling in naked singles
             if(self.checkFullBoard(board)):
                 return n_solutions + 1
             elif(min_cell != None):
                 for val in options.get(min_cell):
+                    # For each possible value for min_cell, recursively call this
+                    # function exploring the board with that value.
                     if(self.checkLegalMove(board,min_cell[0],min_cell[1],val)):
                         copy_board = board.copy()
                         copy_board[min_cell[0],min_cell[1]] = val
                         n_solutions += self.countSolutions(copy_board)
+                    # Again, if there are multiple solutions, there is no need to
+                    # explore more
                     if(n_solutions > 1):
                         return n_solutions
+                # Return after the loop
                 return n_solutions
