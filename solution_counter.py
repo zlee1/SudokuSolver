@@ -2,10 +2,16 @@ import math
 import numpy as np
 from sudoku import sudoku
 
-# This will check if a board has multiple solutions
+# Check if a board has multiple solutions
 class counter:
-    # Take a board as input and store it for evaluation
+    """Counter class checks if there are multiple solutions for a board"""
+
     def __init__(self,board):
+        """__init__ accepts a board in sudoku.py save string or np array format
+
+        Parameters:
+            board (2 dimensional numpy array or String): sudoku board
+        """
         self.nn = len(board)
         self.n = math.sqrt(self.nn)
 
@@ -27,8 +33,13 @@ class counter:
         self.original_board = board
         self.options = dict({})
 
-    # Generate all possible options for each cell
     def generateOptions(self, board, options = dict({})):
+        """Generate all possible options for each cell
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+            options (dictionary): current options for each cell in board
+        """
         if(options == {}):
             for row in range(len(board)):
                 for col in range(len(board)):
@@ -54,8 +65,12 @@ class counter:
                 del options[cell]
         return options
 
-    # Check that the board is complete and legal
     def checkLegalBoard(self,board):
+        """Check that the board is complete and legal
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+        """
         for i in range(self.nn):
             # Check if the current row and column has all necessary values
             if(not (all(nums in board[i] for nums in range(1,self.nn+1)) and all(nums in np.rot90(board)[i] for nums in range(1,self.nn+1)))):
@@ -67,8 +82,15 @@ class counter:
                     return False
         return True
 
-    # Check if a move is legal
     def checkLegalMove(self, board, row, col, val):
+        """Check if a move is legal
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+            row (int): row of the cell
+            col (int): column of the cell
+            val (int): value to fill the cell
+        """
         # Value is outside of the legal range
         if(val not in range(1, self.nn+1)):
             return False
@@ -87,8 +109,13 @@ class counter:
             return False
         return True
 
-    # Find the indices of the current subboard based on row and column
     def getSubboardIndices(self, row, col):
+        """Find the indices of the current subboard based on row and column
+
+        Parameters:
+            row (int): row of the cell
+            col (int): column of the cell
+        """
         rmin = 0
         rmax = 0
         cmin = 0
@@ -104,8 +131,12 @@ class counter:
                 cmax = (i+1)*self.n
         return rmin,rmax,cmin,cmax
 
-    # Check if the board is fully populated
     def checkFullBoard(self,board):
+        """Check if the board is fully populated
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+        """
         for i in range(self.nn):
             for j in range(self.nn):
                 # If there is an empty cell, the board is not fully populated
@@ -113,10 +144,16 @@ class counter:
                     return False
         return True
 
-    # Check if there are multiple solutions for the provided board
-    # This is done by recursively solving the board with different attempts at
-    # legal values for each empty cell.
+
     def countSolutions(self,board_instance):
+        """Check if there are multiple solutions for the provided board
+        Solution checking is done by recursively solving the board with different
+        attempts at legal values for each empty cell.
+
+        Parameters:
+            board_instance (2 dimensional numpy array): sudoku board
+        """
+        
         board = board_instance.copy()
 
         n_solutions = 0

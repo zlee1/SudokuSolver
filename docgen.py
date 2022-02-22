@@ -7,6 +7,7 @@ import random
 
 # Load and generate a puzzle from a template
 def genPuzzle(difficulty="any",sub_size=3):
+    """Generate a sudoku puzzle of a specified difficulty and subboard dimensions"""
     # Assign random difficulty chosen from existing templates
     if(difficulty == "any"):
         path = os.listdir("GeneratedBoards")
@@ -47,6 +48,7 @@ def genPuzzle(difficulty="any",sub_size=3):
 
 # Create PDF of board using LaTeX
 def docGen(board,difficulty):
+    """Generate PDF of a specified board and difficulty label"""
     nn = len(board)
     n = int(math.sqrt(nn))
 
@@ -222,5 +224,5 @@ def docGen(board,difficulty):
             os.remove(p)
 
 if __name__ == '__main__':
-    for j in range(1):
-        genPuzzle("very_very_hard",5)
+    for j in range(5):
+        genPuzzle("very_very_hard",6)

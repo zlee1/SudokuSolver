@@ -6,16 +6,20 @@ import math
 import traceback
 
 class solver:
+    """Solve and generate legal sudoku boards"""
 
-    # Construct solver with game as the sudoku game to be played
     def __init__(self, game):
+        """__init__ accepts a game in np array format
+
+        Parameters:
+            game (2 dimensional numpy array): sudoku board
+        """
         self.game = game
         self.options = dict({})
         self.blacklistedOptions = dict({})
 
-    # Generate all possible options for each cell
     def generateOptions(self):
-        #self.options = {} # Clear previous options
+        """Generate all possible options for each cell"""
         if(self.options == {}):
             for row in range(self.game.nn):
                 for col in range(self.game.nn):
@@ -43,9 +47,10 @@ class solver:
             for cell in delete_cells:
                 del self.options[cell]
 
-    # Fill in all naked singles
-    # Naked single is when there is only one possible move for a cell
     def nakedSingle(self):
+        """Fill in all naked singles
+        Naked single is when there is only one possible move for a cell
+        """
         changes = 0
         self.generateOptions()
         for i in self.options.keys():
@@ -54,9 +59,10 @@ class solver:
                 changes += 1
         return changes
 
-    # Fill in all hidden singles
-    # Hidden single is when there is only one instance of a value in a given row, column, or subboard
     def hiddenSingle(self):
+        """Fill in all hidden singles
+        Hidden single is when there is only one instance of a value in a given row, column, or subboard
+        """
         changes = 0
         self.generateOptions()
 
@@ -104,11 +110,11 @@ class solver:
                         changes += 1
         return changes
 
-    # Blacklist values when a naked pair is present
-    # Naked pair is when there are two cells in a row, column, or subboard that
-    # have the same set of only 2 possible options, meaning those options can be
-    # eliminated from the row, column, or subboard
     def nakedPair(self):
+        """Blacklist values when a naked pair is present
+        Naked pair is when there are two cells in a row, column, or subboard that
+        have the same set of only 2 possible options, meaning those options can be
+        eliminated from the row, column, or subboard"""
         changes = 0
         checked_pairs = [] # Ignore checked pairs to speed up process || To be implemented
         self.generateOptions()
@@ -165,10 +171,10 @@ class solver:
                 print(e)
         return changes
 
-    # Handle hidden pair logic
-    # Hidden pairs are when there are only 2 possible places for a pair of numbers
-    # which means that all other options for those cells can be eliminated
     def hiddenPair(self):
+        """Handle hidden pair logic
+        Hidden pairs are when there are only 2 possible places for a pair of numbers
+        which means that all other options for those cells can be eliminated"""
         changes = 0
         checked_sections = [] # Ignore checked sections to speed up process || To be implemented
         self.generateOptions()
@@ -219,8 +225,8 @@ class solver:
                 print(e)
         return changes
 
-    # Find hidden pairs and blacklist impossible options
     def blacklistHiddenPairs(self, pairs):
+        """Find hidden pairs and blacklist impossible options"""
         changes = 0
         for i in pairs.items():
             num = i[0]
@@ -241,11 +247,11 @@ class solver:
                                 changes += 1
         return changes
 
-    # Find pointing pairs and blacklist impossible options
-    # Pointing pairs are when the only options for a value in a subboard are also
-    # in the same row or column which means that the value must be within that
-    # subboard and can be eliminated from other cells in the row or column
     def pointingPair(self):
+        """Find pointing pairs and blacklist impossible options
+        Pointing pairs are when the only options for a value in a subboard are also
+        in the same row or column which means that the value must be within that
+        subboard and can be eliminated from other cells in the row or column"""
         changes = 0
         self.generateOptions()
         for i in self.options.keys():
@@ -357,11 +363,11 @@ class solver:
                 print(e)
         return changes
 
-    # Find naked sets and blacklist impossible options
-    # Naked sets (triples, quads, quints, etc.) are when there are set_size
-    # possible values across set_size cells. This means that any other instance
-    # of those values in the same container can be removed from possible options
     def nakedSet(self, set_size):
+        """Find naked sets and blacklist impossible options
+        Naked sets (triples, quads, quints, etc.) are when there are set_size
+        possible values across set_size cells. This means that any other instance
+        of those values in the same container can be removed from possible options"""
         changes = 0
         self.generateOptions()
         for i in self.options.keys():
@@ -464,11 +470,11 @@ class solver:
                 print(e)
         return changes
 
-    # Find hidden sets and blacklist impossible options
-    # Hidden sets (triples, quads, quints, etc.) are when there are set_size
-    # possible values that only occur in set_size cells. This means that any other
-    # values in those cells can be removed
     def hiddenSet(self, set_size):
+        """Find hidden sets and blacklist impossible options
+        Hidden sets (triples, quads, quints, etc.) are when there are set_size
+        possible values that only occur in set_size cells. This means that any other
+        values in those cells can be removed"""
         changes = 0
         self.generateOptions()
         for i in self.options.keys():
@@ -548,12 +554,12 @@ class solver:
                 print(e)
         return changes
 
-    # Find X-Wing patterns and blacklist impossible options
-    # X-Wing is when a rectangle can be formed by 4 cells that have the same value
-    # as one of the options. If two opposite sides of the rectangle are the only two
-    # instances of that value in their row/column, then the value cannot appear in
-    # the rows or columns of the rectangle's sides
     def xWing(self):
+        """Find X-Wing patterns and blacklist impossible options
+        X-Wing is when a rectangle can be formed by 4 cells that have the same value
+        as one of the options. If two opposite sides of the rectangle are the only two
+        instances of that value in their row/column, then the value cannot appear in
+        the rows or columns of the rectangle's sides"""
         changes = 0
         # For every possible value on the board
         self.generateOptions()
@@ -664,13 +670,13 @@ class solver:
                 print(e)
         return changes
 
-    # Find set_size-fish and blacklist impossible options
-    # A set_size-fish is like an X-Wing, but instead of 2 rows/cols with the value,
-    # there are set_size rows/cols with the value. A set_size of 3 means there are
-    # 3 rows/cols with a value that spans across 3 cols/rows. This means that the
-    # value can be blacklisted in cells that are in the same rows/cols as the fish,
-    # but are not a part of the fish.
     def fish(self,set_size):
+        """Find set_size-fish and blacklist impossible options
+        A set_size-fish is like an X-Wing, but instead of 2 rows/cols with the value,
+        there are set_size rows/cols with the value. A set_size of 3 means there are
+        3 rows/cols with a value that spans across 3 cols/rows. This means that the
+        value can be blacklisted in cells that are in the same rows/cols as the fish,
+        but are not a part of the fish."""
         changes = 0
         # For every possible value on the board
         self.generateOptions()
@@ -800,9 +806,9 @@ class solver:
                 print(e)
         return changes
 
-    # Find XY-Wings and blacklist impossible options
-    # XY-Wing explanation: https://sudokusolver.app/xywing.html
     def xyWing(self):
+        """Find XY-Wings and blacklist impossible options
+        XY-Wing explanation: https://sudokusolver.app/xywing.html"""
         changes = 0
         self.generateOptions()
         two_val_cells = []
@@ -870,9 +876,9 @@ class solver:
                 print(e)
         return changes
 
-    # Find XYZ-Wings and blacklist impossible options
-    # XYZ-Wing explanation: https://www.sudokuwiki.org/XYZ_Wing
     def xyzWing(self):
+        """Find XYZ-Wings and blacklist impossible options
+        XYZ-Wing explanation: https://www.sudokuwiki.org/XYZ_Wing"""
         changes = 0
         self.generateOptions()
         three_val_cells = []
@@ -965,8 +971,14 @@ class solver:
                 print(e)
         return changes
 
-    # Add value to blacklist for a given cell
     def addToBlacklist(self,row,col,val):
+        """Add value to blacklist for a given cell
+
+        Parameters:
+            row (int): row of the cell
+            col (int): column of the cell
+            val (int): value to blacklist
+        """
         if((row,col) in self.blacklistedOptions.keys()):
             if(val not in self.blacklistedOptions.get((row,col))):
                 self.blacklistedOptions[(row,col)].append(val)
@@ -975,8 +987,12 @@ class solver:
             self.blacklistedOptions.update({(row,col):[val]})
             #print("Blacklisted",row+1,col+1,val)
 
-    # Generate a legal, solved board
     def generateSolvedBoard(self,sub_size):
+        """Generate a legal, solved board
+
+        Parameters:
+            sub_size (int, >= 2): number of subboards in a given row or column
+        """
         # First row is all possible values in ascending order
         board = np.array([[0]*sub_size*sub_size]*sub_size*sub_size)
         test_game = sudoku(sub_size)
@@ -991,12 +1007,21 @@ class solver:
         test_game.loadBoard(board)
         return board
 
-    # Shift a row to the left by nshift such that the front wraps around to the back
     def shiftRow(self,row,nshift):
+        """Shift a row to the left by nshift such that the front wraps around to the back
+
+        Parameters:
+            row (int): row to shift
+            nshift (int): number of places to shift the row
+        """
         return list(row[nshift:]) + list(row[:nshift])
 
-    # Shuffle a fully solved board
     def shuffleSolvedBoard(self,board):
+        """Shuffle a fully solved board
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+        """
         # Random range determined in a way that will ensure well-shuffled board
         for i in range(random.randint(len(board)*len(board),len(board)*len(board)*2)):
             r = random.randint(1,6)
@@ -1034,8 +1059,12 @@ class solver:
             print("Illegal Board Generated")
         return board
 
-    # Shuffle an unsolved board
     def shuffleUnsolvedBoard(self,board):
+        """Shuffle an unsolved board
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+        """
         # Random range determined in a way that will ensure well-shuffled board
         for i in range(random.randint(len(board)*len(board),len(board)*len(board)*2)):
             r = random.randint(1,6)
@@ -1068,16 +1097,26 @@ class solver:
                             board[i][j] = order[board[i][j]-1]
         return board
 
-    # Shift subboards row-wise (2nd row of subboards becomes 1st, 3rd becomes 2nd, etc.)
     def subShift(self,board):
+        """Shift subboards row-wise
+        2nd row of subboards becomes 1st, 3rd becomes 2nd, etc.
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+        """
         sub_size = int(math.sqrt(len(board)))
         copy = board.copy()
         board[sub_size*sub_size-sub_size:] = copy[:sub_size]
         board[:sub_size*sub_size-sub_size] = copy[sub_size:]
         return board
 
-    # Shift individual row within subboard (within a subboard, 2nd row becomes 1st, 3rd becomes 2nd, etc.)
     def individualShift(self,board):
+        """Shift individual row within subboard
+        Within a subboard, 2nd row becomes 1st, 3rd becomes 2nd, etc.
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+        """
         sub_size = int(math.sqrt(len(board)))
         # Randomly pick a subboard to apply shift to
         i = random.randint(1,sub_size)
@@ -1089,10 +1128,15 @@ class solver:
         board[(i-1)*sub_size:i*sub_size] = sub
         return board
 
-    # Generate a legal puzzle with a given difficulty and subboard size
-    # Difficulty values are: -1: any, 0: easy, 1: easyish, 2: medium, 3: hardish, 4: hard, 5:very_hard
-    # Larger puzzle difficulties scale upwards, but values are still the same
     def generateBoard(self,sub_size=3,difficulty=-1):
+        """Generate a legal puzzle with a given difficulty and subboard size
+        Difficulty values are: -1: any, 0: easy, 1: easyish, 2: medium, 3: hardish, 4: hard, 5:very_hard
+        Larger puzzle difficulties scale upwards, but numerical values are still the same
+
+        Parameters:
+            sub_size (int, >= 2): number of subboards within a given row or column
+            difficulty (int, -1:5 inclusive): numeric representation of desired difficulty
+        """
         start = datetime.now()
         done = False
 
@@ -1230,6 +1274,12 @@ class solver:
         return board
 
     def getDifficultyString(self, sub_size=3, difficulty_int=0):
+        """Return the difficulty of the puzzle as a string based on int value and board size
+
+        Parameters:
+            sub_size (int, >= 2): number of subboards within a given row or column
+            difficulty_int (int, 0:5 inclusive): puzzle difficulty value
+        """
         if(sub_size <= 3):
             diff_increase = 0
         elif(sub_size > 7):
@@ -1239,16 +1289,14 @@ class solver:
 
         return ["easy", "easyish", "medium", "hardish", "hard", "very_hard", "very_very_hard", "harder_than_hard", "extremely_hard", "nearly_impossible"][difficulty_int+diff_increase]
 
-    # Rate a puzzle's difficulty
     def rateDifficulty(self,board):
+        """Rate a puzzle's difficulty
+
+        Parameters:
+            board (2 dimensional numpy array): sudoku board
+        """
         # Keep track of the number of times a technique of each difficulty is used
         difficulty_values = [0]*6
-        easy = 0
-        easyish = 0
-        medium = 0
-        hardish = 0
-        hard = 0
-        very_hard = 0
 
         # Load board, generate options, and clear the blacklist
         self.game.loadBoard(board)
@@ -1343,13 +1391,19 @@ class solver:
         else:
             return -1
 
-    # Generate multiple boards
     def generateNBoards(self,n,sub_size=3,difficulty="any"):
+        """Generate multiple boards
+
+        Parameters:
+            n (int): number of boards to generate
+            sub_size (int, >= 2): number of subboards within a given row or column
+            difficulty (String, ["any", "easy", "easyish", "medium", "hardish", "hard", "very hard"]): desired difficulty level
+        """
         for i in range(n):
             self.generateBoard(sub_size,difficulty)
 
-    # Run solver
     def solve(self):
+        """Run functions for solving board"""
         start_time = datetime.now()
         total_changes = 0
         changes = 1

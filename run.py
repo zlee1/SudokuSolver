@@ -8,6 +8,7 @@ from solution_counter import counter
 
 # Generate nboards on nprocesses using multiprocessing
 def multiprocessingGeneration(nprocesses,nboards,sub_size=3,difficulty="any"):
+    """Generate boards with mutliprocessing for faster results"""
     for i in range(nprocesses):
         s = solver(sudoku(3))
         p = Process(target=s.generateNBoards, args = (nboards, sub_size, difficulty))
